@@ -1,6 +1,3 @@
-import { saveContact, getContacts } from './js/api.js';
-import { showModal, showConfirmModal } from './js/ui.js';
-
 // JS principal pour la page chat (nécessaire pour éviter l'erreur MIME lors du déploiement Vercel)
 // Ajoute ici ton code JS spécifique à la page chat si besoin.
 
@@ -432,8 +429,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     messagesArea.appendChild(messageElement);
                     messageInput.value = '';
                     messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
-                } else {
-                    showModal('Veuillez entrer un message.', 'error');
                 }
             }
             sendButton.addEventListener('click', sendMessage);
@@ -550,6 +545,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="flex items-center mb-4">
                                         <svg class="w-5 h-5 text-gray-500 mr-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-gray-400 text-sm">Prénom</span>
                                     </div>
                                     <input 
                                         type="text" 
@@ -651,7 +648,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="flex items-center mb-4">
                                     <svg class="w-5 h-5 text-gray-500 mr-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                                    </div>
+                                    </svg>
                                     <span class="text-gray-400 text-sm">Prénom</span>
                                 </div>
                                 <input 
@@ -743,12 +740,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const phoneNumber = document.getElementById('phoneNumber').value.trim();
                 
                 if (!firstName && !lastName) {
-                    showModal('Veuillez entrer au moins un prénom ou un nom.', 'error');
+                    alert('Veuillez entrer au moins un prénom ou un nom.');
                     return;
                 }
                 
                 if (!phoneNumber) {
-                    showModal('Veuillez entrer un numéro de téléphone.', 'error');
+                    alert('Veuillez entrer un numéro de téléphone.');
                     return;
                 }
                 
@@ -774,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const savedContact = await saveContact(contactData);
                     
                     console.log('Contact sauvegardé:', savedContact);
-                    showModal(`Contact ${firstName} ${lastName} ajouté avec succès !`, 'success');
+                    alert(`Contact ${firstName} ${lastName} ajouté avec succès !`);
                     
                     // Retourner à la vue "Nouvelle discussion" et recharger les contacts
                     if (newChatBackup) {
@@ -786,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } catch (error) {
                     console.error('Erreur lors de la sauvegarde:', error);
-                    showModal('Erreur lors de la sauvegarde du contact. Veuillez réessayer.', 'error');
+                    alert('Erreur lors de la sauvegarde du contact. Veuillez réessayer.');
                 } finally {
                     // Réactiver le bouton
                     saveContactBtn.disabled = false;
