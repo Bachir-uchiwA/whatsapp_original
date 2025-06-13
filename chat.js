@@ -466,6 +466,21 @@ class ChatSystem {
         this.setupChatSelection();
     }
 
+    // Correction : Ajout de la méthode handleInputChange
+    handleInputChange(e) {
+        if (!this.charCount || !this.messageInput) return;
+        const value = e.target.value || '';
+        this.charCount.textContent = value.length;
+        // Optionnel : afficher/cacher le bouton micro selon la présence de texte
+        if (this.sendIcon) {
+            if (value.trim().length > 0) {
+                this.sendIcon.className = 'fas fa-paper-plane text-xl';
+            } else {
+                this.sendIcon.className = 'fas fa-microphone text-xl';
+            }
+        }
+    }
+
     setupEventListeners() {
         this.messageInput?.addEventListener('input', (e) => {
             this.handleInputChange(e);
