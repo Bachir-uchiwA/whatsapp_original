@@ -3,12 +3,22 @@ import { countryRules } from './countries.js';
 // Gestionnaire du formulaire de connexion
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-        const phone = document.getElementById('phone').value.trim();
-        const country = document.getElementById('country').value;
-        const apiUrl = "https://projet-json-server-4.onrender.com";
 
-        // Utilise l'API MongoDB Atlas en production (Vercel)
+    const phone = document.getElementById('phone').value.trim();
+    const country = document.getElementById('country').value;
+    const submitBtn = document.getElementById('submit-btn');
+    const spinner = document.getElementById('spinner');
+    const messageDiv = document.getElementById('message');
+    const apiUrl = "https://projet-json-server-4.onrender.com";
+
+    // Afficher le spinner, cacher le message, désactiver le bouton
+    spinner.classList.remove('hidden');
+    messageDiv.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.querySelector('span').textContent = 'Connexion...';
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
         let session;
         if (window.location.hostname.endsWith('vercel.app')) {
             // Vérifie l'utilisateur
@@ -24,6 +34,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             const users = await response.json();
             if (users.length === 0) {
                 showMessage("Ce numéro n'existe pas dans la base pour ce pays.", 'error');
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.querySelector('span').textContent = 'Se connecter';
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 return;
             }
             // Crée la session sur Render
@@ -43,6 +57,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             if (!sessionResponse.ok) {
                 const errorText = await sessionResponse.text();
                 showMessage(errorText || 'Erreur lors de la création de la session', 'error');
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.querySelector('span').textContent = 'Se connecter';
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 return;
             }
             session = await sessionResponse.json();
@@ -64,6 +82,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             
             if (users.length === 0) {
                 showMessage("Ce numéro n'existe pas dans la base pour ce pays.", 'error');
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.querySelector('span').textContent = 'Se connecter';
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 return;
             }
 
@@ -85,9 +107,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             if (!sessionResponse.ok) {
                 const errorText = await sessionResponse.text();
                 console.error('Server response:', errorText);
-                // Ajout d'un message explicite pour la prod Vercel
                 if (sessionResponse.status === 403) {
                     showMessage("Impossible de créer une session sur la version déployée (lecture seule).", 'error');
+                    spinner.classList.add('hidden');
+                    submitBtn.disabled = false;
+                    submitBtn.querySelector('span').textContent = 'Se connecter';
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     return;
                 }
                 throw new Error('Erreur lors de la création de la session');
@@ -104,6 +129,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     } catch (error) {
         console.error('Error:', error);
         showMessage(error.message || 'Erreur de connexion au serveur. Veuillez réessayer.', 'error');
+    } finally {
+        // Cacher le spinner, réactiver le bouton
+        spinner.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.querySelector('span').textContent = 'Se connecter';
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 });
 
@@ -160,12 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Formatage automatique du numéro de téléphone (optionnel)
+    // Formatage automatique du numéro de téléphone
     phoneInput.addEventListener('input', function() {
-        // Suppression des caractères non numériques
         let value = this.value.replace(/\D/g, '');
         
-        // Limitation de la longueur selon le pays (optionnel)
         const selectedCountry = countrySelect.value;
         const rule = countryRules[selectedCountry];
         
@@ -200,12 +229,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Gestion des raccourcis clavier
 document.addEventListener('keydown', function(e) {
-    // Soumettre avec Ctrl+Enter
     if (e.ctrlKey && e.key === 'Enter') {
         document.getElementById('loginForm').dispatchEvent(new Event('submit'));
     }
     
-    // Effacer le message avec Escape
     if (e.key === 'Escape') {
         const messageDiv = document.getElementById('message');
         if (!messageDiv.classList.contains('hidden')) {
