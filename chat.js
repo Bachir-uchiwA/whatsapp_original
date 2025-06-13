@@ -1,3 +1,6 @@
+import { saveContact, getContacts } from './js/api.js';
+import { showModal, showConfirmModal } from './js/ui.js';
+
 // JS principal pour la page chat (nécessaire pour éviter l'erreur MIME lors du déploiement Vercel)
 // Ajoute ici ton code JS spécifique à la page chat si besoin.
 
