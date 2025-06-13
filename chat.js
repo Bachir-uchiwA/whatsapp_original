@@ -429,6 +429,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     messagesArea.appendChild(messageElement);
                     messageInput.value = '';
                     messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
+                } else {
+                    showModal('Veuillez entrer un message.', 'error');
                 }
             }
             sendButton.addEventListener('click', sendMessage);
@@ -545,8 +547,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="flex items-center mb-4">
                                         <svg class="w-5 h-5 text-gray-500 mr-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        <span class="text-gray-400 text-sm">Prénom</span>
                                     </div>
                                     <input 
                                         type="text" 
@@ -648,7 +648,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="flex items-center mb-4">
                                     <svg class="w-5 h-5 text-gray-500 mr-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
-                                    </svg>
+                                    </div>
                                     <span class="text-gray-400 text-sm">Prénom</span>
                                 </div>
                                 <input 
@@ -740,12 +740,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const phoneNumber = document.getElementById('phoneNumber').value.trim();
                 
                 if (!firstName && !lastName) {
-                    alert('Veuillez entrer au moins un prénom ou un nom.');
+                    showModal('Veuillez entrer au moins un prénom ou un nom.', 'error');
                     return;
                 }
                 
                 if (!phoneNumber) {
-                    alert('Veuillez entrer un numéro de téléphone.');
+                    showModal('Veuillez entrer un numéro de téléphone.', 'error');
                     return;
                 }
                 
@@ -771,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const savedContact = await saveContact(contactData);
                     
                     console.log('Contact sauvegardé:', savedContact);
-                    alert(`Contact ${firstName} ${lastName} ajouté avec succès !`);
+                    showModal(`Contact ${firstName} ${lastName} ajouté avec succès !`, 'success');
                     
                     // Retourner à la vue "Nouvelle discussion" et recharger les contacts
                     if (newChatBackup) {
@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } catch (error) {
                     console.error('Erreur lors de la sauvegarde:', error);
-                    alert('Erreur lors de la sauvegarde du contact. Veuillez réessayer.');
+                    showModal('Erreur lors de la sauvegarde du contact. Veuillez réessayer.', 'error');
                 } finally {
                     // Réactiver le bouton
                     saveContactBtn.disabled = false;
