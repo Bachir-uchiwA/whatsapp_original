@@ -14,7 +14,7 @@ async function apiRequest(endpoint, options = {}) {
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
-            },
+            }, 
             ...options
         });
         
