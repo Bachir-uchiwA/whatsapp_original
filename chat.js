@@ -458,30 +458,13 @@ class ChatSystem {
         this.messagesContainer = document.getElementById('messagesContainer');
         this.charCount = document.getElementById('charCount');
         this.typingIndicator = document.getElementById('typingIndicator');
-        this.currentChatId = null;
-        this.currentContact = null;
-        this.chatHeader = document.querySelector('.bg-gray-900.p-4.flex.items-center.justify-between');
+        this.currentChatId = 'default';
         this.setupEventListeners();
         this.setupEmojiPanel();
-        this.setupChatSelection();
-    }
-
-    // Correction : Ajout de la méthode handleInputChange
-    handleInputChange(e) {
-        if (!this.charCount || !this.messageInput) return;
-        const value = e.target.value || '';
-        this.charCount.textContent = value.length;
-        // Optionnel : afficher/cacher le bouton micro selon la présence de texte
-        if (this.sendIcon) {
-            if (value.trim().length > 0) {
-                this.sendIcon.className = 'fas fa-paper-plane text-xl';
-            } else {
-                this.sendIcon.className = 'fas fa-microphone text-xl';
-            }
-        }
     }
 
     setupEventListeners() {
+        // Gestion de l'input message
         this.messageInput?.addEventListener('input', (e) => {
             this.handleInputChange(e);
         });
@@ -493,6 +476,7 @@ class ChatSystem {
             }
         });
 
+        // Bouton d'envoi
         this.sendBtn?.addEventListener('click', () => {
             if (this.messageInput?.value.trim()) {
                 this.sendMessage();
@@ -501,80 +485,56 @@ class ChatSystem {
             }
         });
 
+        // Bouton pièce jointe
         document.getElementById('attachBtn')?.addEventListener('click', () => {
             this.showAttachmentOptions();
         });
 
+        // Simulation de réception de messages
         this.simulateIncomingMessages();
     }
 
-    setupChatSelection() {
-        const chatItems = document.querySelectorAll('#contactsList > div');
-        chatItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const chatId = item.dataset.chatId;
-                const contactName = item.querySelector('.text-white.font-semibold').textContent.split(' ')[0];
-                const contactAvatar = item.querySelector('img').src;
-
-                this.selectChat(chatId, contactName, contactAvatar);
-            });
-        });
-    }
-
-    async selectChat(chatId, contactName, contactAvatar) {
-        if (this.currentChatId === chatId) return;
-
-        this.currentChatId = chatId;
-        this.currentContact = { name: contactName, avatar: contactAvatar };
-
-        this.updateChatHeader();
-        this.highlightSelectedChat();
-        this.messagesContainer.innerHTML = '';
-        await this.loadMessages();
-        this.modalSystem.info(`Discussion ouverte avec ${contactName}`);
-        this.scrollToBottom();
-    }
-
-    updateChatHeader() {
-        if (!this.chatHeader || !this.currentContact) return;
-
-        this.chatHeader.querySelector('img').src = this.currentContact.avatar;
-        this.chatHeader.querySelector('.font-semibold.text-lg').textContent = this.currentContact.name;
-    }
-
-    highlightSelectedChat() {
-        const chatItems = document.querySelectorAll('#contactsList > div');
-        chatItems.forEach(item => {
-            if (item.dataset.chatId === this.currentChatId) {
-                item.classList.add('bg-gray-700');
+    handleInputChange(e) {
+        const value = e.target.value;
+        const length = value.length;
+        
+        // Mettre à jour le compteur de caractères
+        if (this.charCount) {
+            this.charCount.textContent = length;
+            
+            // Changer la couleur selon la limite
+            if (length > 900) {
+                this.charCount.className = 'text-red-400';
+            } else if (length > 700) {
+                this.charCount.className = 'text-yellow-400';
             } else {
-                item.classList.remove('bg-gray-700');
+                this.charCount.className = 'text-gray-500';
             }
-        });
-    }
-
-    async loadMessages() {
-        try {
-            this.modalSystem.loading('Chargement des messages...');
-            const messages = await getMessages(this.currentChatId);
-            messages.forEach(message => this.addMessageToUI(message));
-            this.modalSystem.hideLoading();
-        } catch (error) {
-            console.error('Erreur lors du chargement des messages:', error);
-            this.modalSystem.error('Erreur lors du chargement des messages');
         }
+
+        // Changer l'icône du bouton d'envoi
+        if (this.sendIcon) {
+            if (value.trim()) {
+                this.sendIcon.className = 'fas fa-paper-plane text-xl';
+                this.sendBtn?.classList.remove('bg-green-600', 'hover:bg-green-700');
+                this.sendBtn?.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                this.sendIcon.className = 'fas fa-microphone text-xl';
+                this.sendBtn?.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                this.sendBtn?.classList.add('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        // Simuler l'indicateur de frappe
+        this.showTypingIndicator();
     }
 
     async sendMessage() {
         const message = this.messageInput?.value.trim();
-        if (!message || !this.currentChatId) {
-            if (!this.currentChatId) {
-                this.modalSystem.warning('Veuillez sélectionner une discussion avant d\'envoyer un message');
-            }
-            return;
-        }
+        if (!message) return;
 
         try {
+            // Créer l'objet message
             const messageData = {
                 id: Date.now(),
                 chatId: this.currentChatId,
@@ -584,10 +544,14 @@ class ChatSystem {
                 status: 'sent'
             };
 
+            // Ajouter le message à l'interface
             this.addMessageToUI(messageData);
+
+            // Vider l'input
             this.messageInput.value = '';
             this.handleInputChange({ target: { value: '' } });
 
+            // Sauvegarder le message (optionnel)
             try {
                 await saveMessage(messageData);
                 this.updateMessageStatus(messageData.id, 'delivered');
@@ -595,6 +559,7 @@ class ChatSystem {
                 console.error('Erreur lors de la sauvegarde:', error);
             }
 
+            // Simuler une réponse automatique
             setTimeout(() => {
                 this.simulateAutoReply();
             }, 1000 + Math.random() * 2000);
@@ -811,20 +776,7 @@ class ChatSystem {
         div.textContent = text;
         return div.innerHTML;
     }
-
-    // Initialize the chat system when the DOM is loaded
-    static init() {
-        document.addEventListener('DOMContentLoaded', () => {
-            const modalSystem = new ModalSystem();
-            const chatSystem = new ChatSystem(modalSystem);
-            // Make it available globally if needed
-            window.chatSystem = chatSystem;
-        });
-    }
 }
-
-// Initialize the chat system
-ChatSystem.init();
 
 // Système d'authentification avec animations
 class AuthSystem {
@@ -919,7 +871,9 @@ class ContactSystem {
             return;
         }
 
-        if (!window.utils.validatePhone(phone)) {
+        // Validation du numéro de téléphone
+        const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+        if (!phoneRegex.test(phone)) {
             this.modalSystem.warning('Veuillez entrer un numéro de téléphone valide');
             return;
         }
@@ -929,7 +883,6 @@ class ContactSystem {
 
             const contactData = {
                 id: Date.now(),
-                chatId: `chat_${Date.now()}`, // Générer un chatId unique
                 name: name,
                 phone: phone,
                 avatar: this.generateAvatar(name),
@@ -941,14 +894,12 @@ class ContactSystem {
             this.modalSystem.hideLoading();
             this.modalSystem.success(`Contact ${name} ajouté avec succès !`);
 
+            // Vider le formulaire
             nameInput.value = '';
             phoneInput.value = '';
 
-            // Recharger la liste des contacts dans le modal
+            // Recharger la liste des contacts
             this.modalSystem.loadContacts();
-
-            // Mettre à jour la liste des discussions
-            await ChatManager.updateChatList();
 
         } catch (error) {
             console.error('Erreur lors de l\'ajout du contact:', error);
@@ -1421,100 +1372,11 @@ class PerformanceOptimizer {
     }
 }
 
-// Système de gestion des chats
-class ChatManager {
-    static async initializeDemoData() {
-        try {
-            const existingContacts = await getContacts();
-            
-            if (existingContacts.length === 0) {
-                const demoContacts = [
-                    {
-                        id: 1,
-                        chatId: 'chat_1',
-                        name: 'Alice Martin',
-                        phone: '+33 6 12 34 56 78',
-                        avatar: { color: 'bg-blue-500', initial: 'A' },
-                        createdAt: new Date().toISOString()
-                    },
-                    {
-                        id: 2,
-                        chatId: 'chat_2',
-                        name: 'Bob Dupont',
-                        phone: '+33 6 98 76 54 32',
-                        avatar: { color: 'bg-green-500', initial: 'B' },
-                        createdAt: new Date().toISOString()
-                    },
-                    {
-                        id: 3,
-                        chatId: 'chat_3',
-                        name: 'Claire Moreau',
-                        phone: '+33 6 11 22 33 44',
-                        avatar: { color: 'bg-purple-500', initial: 'C' },
-                        createdAt: new Date().toISOString()
-                    }
-                ];
-
-                for (const contact of demoContacts) {
-                    try {
-                        await saveContact(contact);
-                    } catch (error) {
-                        console.warn('Impossible d\'ajouter le contact de démo:', contact.name);
-                    }
-                }
-
-                console.log('📝 Contacts de démonstration ajoutés');
-            }
-
-            await ChatManager.updateChatList();
-        } catch (error) {
-            console.warn('Impossible d\'initialiser les données de démonstration:', error);
-        }
-    }
-
-    static async updateChatList() {
-        try {
-            const contacts = await getContacts();
-            const contactsList = document.getElementById('contactsList');
-            if (!contactsList) return;
-
-            contactsList.innerHTML = '';
-
-            contacts.forEach(contact => {
-                const chatEl = document.createElement('div');
-                chatEl.className = 'p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer';
-                chatEl.dataset.chatId = contact.chatId;
-                chatEl.innerHTML = `
-                    <img src="https://randomuser.me/api/portraits/men/${contact.id}.jpg" alt="avatar" class="w-12 h-12 rounded-full border-2 border-gray-700">
-                    <div class="flex-1">
-                        <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold">${contact.name}</span>
-                            <span class="text-gray-500 text-xs">${window.utils.formatDate(new Date())}</span>
-                        </div>
-                        <div class="text-gray-400 text-sm">Cliquez pour discuter</div>
-                    </div>
-                `;
-
-                // Add click event listener
-                chatEl.addEventListener('click', () => {
-                    if (window.chatSystem) {
-                        window.chatSystem.selectChat(contact.chatId, contact.name, `https://randomuser.me/api/portraits/men/${contact.id}.jpg`);
-                    }
-                });
-
-                contactsList.appendChild(chatEl);
-            });
-        } catch (error) {
-            console.error('Erreur lors de la mise à jour de la liste des discussions:', error);
-        }
-    }
-}
-
-// Update initialization code
-document.addEventListener('DOMContentLoaded', async () => {
+// Initialisation de l'application
+document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Initialisation de WhatsApp Web...');
-    
-    // Initialize core systems
+
+    // Initialiser tous les systèmes
     const stateManager = new StateManager();
     const modalSystem = new ModalSystem();
     const toastSystem = new ToastSystem();
@@ -1527,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const errorHandler = new ErrorHandler(modalSystem, toastSystem);
     const performanceOptimizer = new PerformanceOptimizer();
 
-    // Make systems globally available for debugging
+    // Rendre les systèmes accessibles globalement pour le débogage
     window.WhatsAppSystems = {
         stateManager,
         modalSystem,
@@ -1542,33 +1404,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         performanceOptimizer
     };
 
-    // Initialize UI
+    // Animation d'entrée de la page
     document.body.classList.add('animate-fade-in');
 
-    try {
-        // Initialize demo data and chat list
-        await ChatManager.initializeDemoData();
-        await ChatManager.updateChatList();
-
-        // Show welcome messages
+    // Message de bienvenue avec animation
+    setTimeout(() => {
+        toastSystem.success('Bienvenue sur WhatsApp Web ! 🎉');
+        
+        // Afficher les raccourcis clavier après 3 secondes
         setTimeout(() => {
-            toastSystem.success('Bienvenue sur WhatsApp Web ! 🎉');
-            setTimeout(() => {
-                toastSystem.info('Appuyez sur F1 pour voir les raccourcis clavier');
-            }, 3000);
-        }, 1000);
-    } catch (error) {
-        console.error('Erreur lors de l\'initialisation:', error);
-        toastSystem.error('Erreur lors du chargement des données');
-    }
+            toastSystem.info('Appuyez sur F1 pour voir les raccourcis clavier');
+        }, 3000);
+    }, 1000);
 
-    // Check connectivity
+    // Vérifier la connexion internet
     if (!navigator.onLine) {
         toastSystem.warning('Vous êtes hors ligne. Certaines fonctionnalités peuvent être limitées.');
     }
 
+    // Initialiser les données de démonstration
+    initializeDemoData();
+
     console.log('✅ WhatsApp Web initialisé avec succès !');
 });
+
+// Fonction d'initialisation des données de démonstration
+async function initializeDemoData() {
+    try {
+        // Vérifier si des contacts existent déjà
+        const existingContacts = await getContacts();
+        
+        if (existingContacts.length === 0) {
+            // Ajouter quelques contacts de démonstration
+            const demoContacts = [
+                {
+                    id: 1,
+                    name: 'Alice Martin',
+                    phone: '+33 6 12 34 56 78',
+                    avatar: { color: 'bg-blue-500', initial: 'A' },
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    name: 'Bob Dupont',
+                    phone: '+33 6 98 76 54 32',
+                    avatar: { color: 'bg-green-500', initial: 'B' },
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: 3,
+                    name: 'Claire Moreau',
+                    phone: '+33 6 11 22 33 44',
+                    avatar: { color: 'bg-purple-500', initial: 'C' },
+                    createdAt: new Date().toISOString()
+                }
+            ];
+
+            for (const contact of demoContacts) {
+                try {
+                    await saveContact(contact);
+                } catch (error) {
+                    console.warn('Impossible d\'ajouter le contact de démo:', contact.name);
+                }
+            }
+
+            console.log('📝 Contacts de démonstration ajoutés');
+        }
+    } catch (error) {
+        console.warn('Impossible d\'initialiser les données de démonstration:', error);
+    }
+}
 
 // Fonctions utilitaires globales
 window.utils = {
