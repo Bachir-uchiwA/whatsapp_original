@@ -1539,6 +1539,33 @@ window.utils = {
     }
 };
 
+// Gestion de l'aperçu du nouveau chat
+document.addEventListener('DOMContentLoaded', function() {
+    const plusIcon = document.querySelector('.fas.fa-plus-circle.text-xl');
+    const newChatPreview = document.getElementById('newChatPreview');
+    const closePreview = document.getElementById('closePreview');
+  
+    if (plusIcon && newChatPreview && closePreview) {
+        plusIcon.addEventListener('click', function() {
+            newChatPreview.classList.remove('hidden');
+            newChatPreview.classList.add('flex');
+        });
+    
+        closePreview.addEventListener('click', function() {
+            newChatPreview.classList.add('hidden');
+            newChatPreview.classList.remove('flex');
+        });
+    
+        // Fermer l'aperçu en cliquant à l'extérieur
+        newChatPreview.addEventListener('click', function(e) {
+            if (e.target === newChatPreview) {
+                newChatPreview.classList.add('hidden');
+                newChatPreview.classList.remove('flex');
+            }
+        });
+    }
+});
+
 // Gestion des Service Workers pour le mode hors ligne
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
