@@ -63,9 +63,7 @@ async function getMessages(chatId = null) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM chargé, initialisation...');
     
-    // Initialiser le système de modals (déjà fait automatiquement)
-    
-    // Initialiser les autres fonctionnalités
+    // Initialiser les systèmes
     setupContextMenu();
     setupSettingsPanel();
     setupNewChatListeners();
@@ -84,21 +82,15 @@ document.addEventListener('DOMContentLoaded', function() {
         modalSystem.error('Une erreur inattendue s\'est produite. Veuillez actualiser la page.');
     });
     
-    // Gestion des erreurs de promesses non capturées
-    window.addEventListener('unhandledrejection', function(e) {
-        console.error('Promesse rejetée:', e.reason);
-        modalSystem.error('Erreur de connexion. Veuillez vérifier votre connexion internet.');
-    });
-    
     // Écouteur pour le bouton "Nouveau contact"
-    const newContactBtn = document.querySelector('.flex.items-center.w-full.p-2.text-white.hover\\:bg-gray-700.rounded-lg:nth-child(2)');
-    if (newContactBtn) {
-        newContactBtn.addEventListener('click', function(e) {
+    const newContactBtn = document.querySelector('div.flex.items-center.w-full.p-2.text-white.hover\\:bg-gray-700.rounded-lg span.text-sm:text-white');
+    if (newContactBtn && newContactBtn.textContent.includes('Nouveau contact')) {
+        newContactBtn.closest('div').addEventListener('click', function(e) {
             e.preventDefault();
             const chatSystem = window.WhatsAppSystems.chatSystem;
             chatSystem.showNewContactForm();
             
-            // Optionnel : fermer la prévisualisation du nouveau chat
+            // Fermer la prévisualisation du nouveau chat
             const clone = document.getElementById('tempPreview');
             const sidebarChats = document.getElementById('sidebarChats');
             if (clone && sidebarChats) {
@@ -159,17 +151,23 @@ class ModalSystem {
         
         if (!modal || !messageEl || !iconEl) return;
 
-        messageEl.textContent = message;
-        
-        // Icônes avec Tailwind
-        const icons = {
-            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-check text-white text-xl"></i></div>',
-            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-times text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-info text-white text-xl"></i></div>'
-        };
-        
-        iconEl.innerHTML = icons[type] || icons.info;
+        if (type === 'custom') {
+            // Pour un contenu personnalisé, insérer directement le HTML
+            messageEl.innerHTML = message;
+            iconEl.innerHTML = ''; // Pas d'icône pour les modals personnalisées
+        } else {
+            messageEl.textContent = message;
+            
+            // Icônes avec Tailwind
+            const icons = {
+                success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-check text-white text-xl"></i></div>',
+                error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-times text-white text-xl"></i></div>',
+                warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-exclamation text-white text-xl"></i></div>',
+                info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-info text-white text-xl"></i></div>'
+            };
+            
+            iconEl.innerHTML = icons[type] || icons.info;
+        }
         
         modal.classList.remove('hidden');
         modal.classList.add('animate-fade-in');
@@ -299,8 +297,8 @@ class ModalSystem {
                 const contactEl = document.createElement('div');
                 contactEl.className = 'flex items-center p-3 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors duration-200';
                 contactEl.innerHTML = `
-                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.name.charAt(0).toUpperCase()}</span>
+                    <div class="w-10 h-10 ${contact.avatar.color} rounded-full flex items-center justify-center mr-3">
+                        <span class="text-white font-bold">${contact.avatar.initial}</span>
                     </div>
                     <div class="flex-1">
                         <div class="text-white font-medium">${contact.name}</div>
@@ -808,62 +806,110 @@ class ChatSystem {
 
     showNewContactForm() {
         const newContactHTML = `
-            <div class="bg-gray-900 p-4 rounded-lg max-w-md w-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-white text-lg font-bold">Nouveau contact</h2>
-                    <button id="newContactClose" class="text-gray-400 hover:text-white">&times;</button>
+            <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-white text-xl font-semibold">Nouveau contact</h2>
+                    <button id="newContactClose" class="text-gray-400 hover:text-white text-2xl transition-colors duration-200">&times;</button>
                 </div>
                 <div class="space-y-4">
-                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="flex items-center">
-                        <select id="contactCountryCode" class="w-20 p-2 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="+221">SN +221</option>
-                            <!-- Add more country codes as needed -->
-                        </select>
-                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="w-full p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
+                    <input 
+                        type="text" 
+                        id="contactFirstName" 
+                        placeholder="Prénom" 
+                        class="w-full p-3 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 placeholder-gray-400"
+                    >
+                    <input 
+                        type="text" 
+                        id="contactLastName" 
+                        placeholder="Nom" 
+                        class="w-full p-3 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 placeholder-gray-400"
+                    >
                     <div class="flex items-center space-x-2">
-                        <input type="checkbox" id="syncContact" class="text-blue-500 focus:ring-blue-500">
-                        <label for="syncContact" class="text-gray-400 text-sm">Synchroniser le contact sur le téléphone</label>
+                        <select 
+                            id="contactCountryCode" 
+                            class="p-3 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                        >
+                            <option value="+221">SN +221</option>
+                            <option value="+33">FR +33</option>
+                            <option value="+1">US +1</option>
+                            <option value="+44">UK +44</option>
+                            <!-- Ajouter d'autres codes de pays si nécessaire -->
+                        </select>
+                        <input 
+                            type="tel" 
+                            id="contactPhone" 
+                            placeholder="Numéro de téléphone" 
+                            class="flex-1 p-3 bg-gray-800 text-white rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 placeholder-gray-400"
+                        >
                     </div>
-                    <button id="saveContactBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg">Enregistrer</button>
-                    <p class="text-gray-500 text-xs">Ce contact sera ajouté au carnet d'adresses de votre téléphone.</p>
+                    <div class="flex items-center space-x-3">
+                        <input 
+                            type="checkbox" 
+                            id="syncContact" 
+                            class="w-5 h-5 text-green-500 bg-gray-800 rounded focus:ring-green-500 focus:ring-offset-gray-900"
+                        >
+                        <label for="syncContact" class="text-gray-300 text-sm">Synchroniser le contact avec le téléphone</label>
+                    </div>
+                    <button 
+                        id="saveContactBtn" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-medium transition-all duration-200"
+                    >
+                        Enregistrer
+                    </button>
+                    <p class="text-gray-500 text-xs text-center">Ce contact sera ajouté à votre carnet d'adresses WhatsApp.</p>
                 </div>
             </div>
         `;
 
         this.modalSystem.showModal(newContactHTML, 'custom');
         
+        // Gestion du bouton de fermeture
         document.getElementById('newContactClose')?.addEventListener('click', () => {
             this.modalSystem.hideModal();
         });
 
+        // Gestion du bouton d'enregistrement
         document.getElementById('saveContactBtn')?.addEventListener('click', () => {
             const firstName = document.getElementById('contactFirstName').value.trim();
             const lastName = document.getElementById('contactLastName').value.trim();
-            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim();
+            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
             const sync = document.getElementById('syncContact').checked;
 
-            if (firstName && lastName && phone) {
-                const contactData = {
-                    id: Date.now(),
-                    name: `${firstName} ${lastName}`,
-                    phone: phone,
-                    avatar: { color: 'bg-blue-500', initial: firstName.charAt(0).toUpperCase() },
-                    createdAt: new Date().toISOString()
-                };
-                saveContact(contactData).then(() => {
+            // Validation des champs
+            if (!firstName || !lastName || !phone) {
+                this.modalSystem.warning('Veuillez remplir tous les champs obligatoires.');
+                return;
+            }
+
+            // Validation du numéro de téléphone
+            const phoneRegex = /^[\+]?[0-9]{10,}$/;
+            if (!phoneRegex.test(phone)) {
+                this.modalSystem.warning('Veuillez entrer un numéro de téléphone valide.');
+                return;
+            }
+
+            const contactData = {
+                id: Date.now(),
+                name: `${firstName} ${lastName}`,
+                phone: phone,
+                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
+                createdAt: new Date().toISOString()
+            };
+
+            this.modalSystem.loading('Ajout du contact...');
+
+            saveContact(contactData)
+                .then(() => {
+                    this.modalSystem.hideLoading();
                     this.modalSystem.success(`Contact ${contactData.name} ajouté avec succès !`);
                     this.modalSystem.hideModal();
-                    this.modalSystem.loadContacts(); // Refresh contacts list if implemented
-                }).catch(error => {
-                    console.error('Error saving contact:', error);
-                    this.modalSystem.error('Erreur lors de l\'ajout du contact');
+                    this.modalSystem.loadContacts(); // Rafraîchir la liste des contacts
+                })
+                .catch(error => {
+                    console.error('Erreur lors de l\'ajout du contact:', error);
+                    this.modalSystem.hideLoading();
+                    this.modalSystem.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.');
                 });
-            } else {
-                this.modalSystem.warning('Veuillez remplir tous les champs');
-            }
         });
     }
 }
