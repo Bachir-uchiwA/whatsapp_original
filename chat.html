@@ -465,50 +465,6 @@
             </div>
         </div>
 
-        <!-- Modal pour nouveau chat -->
-        <div id="newChatModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-gray-800 rounded-lg w-full max-w-md p-6 animate-scale-in">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-white text-lg font-semibold">Nouveau chat</h2>
-                    <button id="newChatClose" class="text-gray-400 hover:text-white">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <!-- Formulaire d'ajout de contact -->
-                <form id="addContactForm" class="mb-6">
-                    <div class="mb-4">
-                        <label class="block text-gray-300 text-sm font-medium mb-2">Nom</label>
-                        <input
-                            id="contactName"
-                            type="text"
-                            placeholder="Nom du contact"
-                            class="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        />
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-gray-300 text-sm font-medium mb-2">Numéro de téléphone</label>
-                        <input
-                            id="contactPhone"
-                            type="tel"
-                            placeholder="+33 6 12 34 56 78"
-                            class="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg py-2 transition-colors duration-200"
-                    >
-                        Ajouter le contact
-                    </button>
-                </form>
-                <!-- Liste des contacts -->
-                <div class="border-t border-gray-700 pt-4">
-                    <h3 class="text-gray-300 text-sm font-medium mb-2">Contacts existants</h3>
-                    <div id="contactsListModal" class="max-h-60 overflow-y-auto scrollbar-thin"></div>
-                </div>
-            </div>
-        </div>
-
         <!-- Modal de base -->
         <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full animate-scale-in">
