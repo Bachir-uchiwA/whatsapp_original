@@ -311,7 +311,7 @@
                             <i class="fas fa-users text-xl text-green-500 mr-3"></i>
                             <span>Nouveau groupe</span>
                         </button>
-                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg" id="newContactButton">
+                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
                             <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
                             <span>Nouveau contact</span>
                         </button>
@@ -586,78 +586,3 @@
     <script src="/chat.js"></script>
 </body>
 </html>
-
-<!-- New Contact Modal -->
-<div id="newContactModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden animate-fade-in">
-    <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-auto animate-scale-in overflow-hidden">
-        <!-- Header -->
-        <div class="flex items-center justify-between p-4 bg-gray-700">
-            <div class="flex items-center">
-                <i class="fas fa-arrow-left text-white text-xl cursor-pointer mr-4" id="newContactBack"></i>
-                <h3 class="text-white text-lg font-semibold">Nouveau contact</h3>
-            </div>
-            <i class="fas fa-times text-gray-400 hover:text-white cursor-pointer text-xl" id="newContactClose"></i>
-        </div>
-
-        <!-- Formulaire -->
-        <div class="p-6 space-y-6">
-            <!-- Prénom -->
-            <div class="relative border-b border-gray-600 focus-within:border-green-500">
-                <i class="fas fa-user text-gray-400 absolute left-0 top-1/2 transform -translate-y-1/2"></i>
-                <input type="text" id="firstName" class="w-full pl-8 pr-3 py-2 bg-transparent text-white placeholder-gray-500 focus:outline-none" placeholder="Prénom">
-            </div>
-
-            <!-- Nom -->
-            <div class="relative border-b border-gray-600 focus-within:border-green-500">
-                <i class="fas fa-user text-gray-400 absolute left-0 top-1/2 transform -translate-y-1/2"></i>
-                <input type="text" id="lastName" class="w-full pl-8 pr-3 py-2 bg-transparent text-white placeholder-gray-500 focus:outline-none" placeholder="Nom">
-            </div>
-
-            <!-- Téléphone -->
-            <div class="relative border-b border-gray-600 focus-within:border-green-500 flex items-center">
-                <i class="fas fa-phone text-gray-400 mr-3"></i>
-                <select id="countryCode" class="bg-transparent text-white py-2 pr-2 focus:outline-none">
-                    <option value="+221" class="bg-gray-800 text-white">SN +221</option>
-                    <!-- Autres codes de pays peuvent être ajoutés ici -->
-                </select>
-                <input type="text" id="phoneNumber" class="flex-1 px-3 py-2 bg-transparent text-white placeholder-gray-500 focus:outline-none" placeholder="Téléphone">
-            </div>
-
-            <!-- Synchroniser le contact -->
-            <div class="flex items-center justify-between mt-6">
-                <div class="flex items-center">
-                    <i class="fas fa-sync-alt text-gray-400 mr-3"></i>
-                    <div>
-                        <p class="text-white">Synchroniser le contact sur le téléphone</p>
-                        <p class="text-gray-400 text-sm">Ce contact sera ajouté au carnet d'adresses de votre téléphone.</p>
-                    </div>
-                </div>
-                <label for="syncToggle" class="flex items-center cursor-pointer">
-                    <div class="relative">
-                        <input type="checkbox" id="syncToggle" class="sr-only">
-                        <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
-                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
-                    </div>
-                </label>
-            </div>
-        </div>
-
-        <!-- Bouton Enregistrer -->
-        <div class="p-4 bg-gray-700 flex justify-end">
-            <button id="saveContactBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
-                Enregistrer
-            </button>
-        </div>
-    </div>
-</div>
-
-<style>
-    /* Styles pour le toggle switch */
-    input:checked + .block {
-        background-color: #10B981; /* green-500 */
-    }
-    input:checked + .block + .dot {
-        transform: translateX(100%);
-    }
-</style>
-

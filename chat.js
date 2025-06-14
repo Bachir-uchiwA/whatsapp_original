@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Écouteur pour le bouton "Nouveau contact"
-    const newContactBtn = document.getElementById('newContactButton');
+    const newContactBtn = document.querySelector('.flex.items-center.w-full.p-2.text-white.hover\\:bg-gray-700.rounded-lg:nth-child(2)');
     if (newContactBtn) {
         newContactBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -115,8 +115,7 @@ class ModalSystem {
         this.modal = document.getElementById('modal');
         this.confirmModal = document.getElementById('confirm-modal');
         this.loadingModal = document.getElementById('loading-modal');
-        this.newChatModal = document.getElementById("newChatModal");
-        this.newContactModal = document.getElementById("newContactModal");
+        this.newChatModal = document.getElementById('newChatModal');
         this.setupEventListeners();
     }
 
@@ -132,20 +131,12 @@ class ModalSystem {
         });
 
         // Modal nouveau chat
-        document.getElementById("newChatClose")?.addEventListener("click", () => {
+        document.getElementById('newChatClose')?.addEventListener('click', () => {
             this.hideNewChatModal();
         });
 
-        // Modal nouveau contact
-        document.getElementById("newContactClose")?.addEventListener("click", () => {
-            this.hideNewContactModal();
-        });
-        document.getElementById("newContactBack")?.addEventListener("click", () => {
-            this.hideNewContactModal();
-        });
-
         // Fermer les modals en cliquant à l'extérieur
-        [this.modal, this.confirmModal, this.loadingModal, this.newChatModal, this.newContactModal].forEach(modal => {
+        [this.modal, this.confirmModal, this.loadingModal, this.newChatModal].forEach(modal => {
             modal?.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     this.hideAllModals();
@@ -340,26 +331,6 @@ class ModalSystem {
         this.hideConfirmModal();
         this.hideLoadingModal();
         this.hideNewChatModal();
-        this.hideNewContactModal();
-    }
-
-    showNewContactModal() {
-        const modal = this.newContactModal;
-        if (!modal) return;
-        
-        modal.classList.remove("hidden");
-        modal.classList.add("animate-fade-in");
-    }
-
-    hideNewContactModal() {
-        const modal = this.newContactModal;
-        if (!modal) return;
-        
-        modal.classList.add("animate-fade-out");
-        setTimeout(() => {
-            modal.classList.add("hidden");
-            modal.classList.remove("animate-fade-in", "animate-fade-out");
-        }, 200);
     }
 
     // Méthodes raccourcies pour faciliter l'utilisation
@@ -1700,226 +1671,3 @@ if ('serviceWorker' in navigator) {
 console.log('📱 WhatsApp Web Clone - Développé avec Tailwind CSS');
 console.log('🔧 Systèmes disponibles:', Object.keys(window.WhatsAppSystems || {}));
 console.log('🛠️ Utilitaires disponibles:', Object.keys(window.utils || {}));
-
-class ChatSystem {
-    constructor(modalSystem) {
-        this.modalSystem = modalSystem;
-        this.setupSaveContactListener();
-    }
-
-    showNewContactForm() {
-        this.modalSystem.showNewContactModal();
-    }
-
-    setupSaveContactListener() {
-        const saveContactBtn = document.getElementById('saveContactBtn');
-        if (saveContactBtn) {
-            saveContactBtn.addEventListener('click', async () => {
-                const firstName = document.getElementById('firstName').value;
-                const lastName = document.getElementById('lastName').value;
-                const countryCode = document.getElementById('countryCode').value;
-                const phoneNumber = document.getElementById('phoneNumber').value;
-                const syncToggle = document.getElementById('syncToggle').checked;
-
-                if (!firstName || !phoneNumber) {
-                    this.modalSystem.error('Veuillez remplir au moins le prénom et le numéro de téléphone.');
-                    return;
-                }
-
-                const contactData = {
-                    firstName,
-                    lastName,
-                    phone: countryCode + phoneNumber,
-                    sync: syncToggle
-                };
-
-                this.modalSystem.loading('Enregistrement du contact...');
-                try {
-                    await saveContact(contactData);
-                    this.modalSystem.success('Contact enregistré avec succès !');
-                    this.modalSystem.hideNewContactModal();
-                    // Optionnel: recharger les contacts dans la liste si nécessaire
-                    // this.modalSystem.loadContacts(); 
-                } catch (error) {
-                    console.error('Erreur lors de l\'enregistrement du contact:', error);
-                    this.modalSystem.error('Erreur lors de l\'enregistrement du contact.');
-                } finally {
-                    this.modalSystem.hideLoading();
-                }
-            });
-        }
-    }
-}
-
-// Initialisation des systèmes après le chargement du DOM
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM chargé, initialisation...');
-    
-    // Initialiser le système de modals
-    const modalSystem = new ModalSystem();
-    const navigationSystem = new NavigationSystem();
-    const chatSystem = new ChatSystem(modalSystem);
-
-    // Exposer les systèmes globalement pour un accès facile
-    window.WhatsAppSystems = {
-        modalSystem,
-        navigationSystem,
-        chatSystem
-    };
-
-    // Initialiser les autres fonctionnalités
-    setupContextMenu();
-    setupSettingsPanel();
-    setupNewChatListeners();
-    
-    // Afficher un message de bienvenue
-    setTimeout(() => {
-        modalSystem.info(
-            'Bienvenue sur WhatsApp Web ! Cliquez sur "Nouveau chat" pour commencer.',
-            'Bien bienvenue'
-        );
-    }, 1000);
-    
-    // Gestion des erreurs globales
-    window.addEventListener('error', function(e) {
-        console.error('Erreur globale:', e.error);
-        modalSystem.error('Une erreur inattendue s\'est produite. Veuillez actualiser la page.');
-    });
-    
-    // Gestion des erreurs de promesses non capturées
-    window.addEventListener('unhandledrejection', function(e) {
-        console.error('Promesse rejetée:', e.reason);
-        modalSystem.error('Erreur de connexion. Veuillez vérifier votre connexion internet.');
-    });
-    
-    // Écouteur pour le bouton "Nouveau contact"
-    const newContactBtn = document.getElementById('newContactButton');
-    if (newContactBtn) {
-        newContactBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const chatSystem = window.WhatsAppSystems.chatSystem;
-            chatSystem.showNewContactForm();
-            
-            // Optionnel : fermer la prévisualisation du nouveau chat
-            const clone = document.getElementById('tempPreview');
-            const sidebarChats = document.getElementById('sidebarChats');
-            if (clone && sidebarChats) {
-                clone.remove();
-                sidebarChats.style.display = 'flex';
-            }
-        });
-    }
-});
-
-
-
-class ChatSystem {
-    constructor(modalSystem) {
-        this.modalSystem = modalSystem;
-        this.setupSaveContactListener();
-    }
-
-    showNewContactForm() {
-        this.modalSystem.showNewContactModal();
-    }
-
-    setupSaveContactListener() {
-        const saveContactBtn = document.getElementById('saveContactBtn');
-        if (saveContactBtn) {
-            saveContactBtn.addEventListener('click', async () => {
-                const firstName = document.getElementById('firstName').value;
-                const lastName = document.getElementById('lastName').value;
-                const countryCode = document.getElementById('countryCode').value;
-                const phoneNumber = document.getElementById('phoneNumber').value;
-                const syncToggle = document.getElementById('syncToggle').checked;
-
-                if (!firstName || !phoneNumber) {
-                    this.modalSystem.error('Veuillez remplir au moins le prénom et le numéro de téléphone.');
-                    return;
-                }
-
-                const contactData = {
-                    firstName,
-                    lastName,
-                    phone: countryCode + phoneNumber,
-                    sync: syncToggle
-                };
-
-                this.modalSystem.loading('Enregistrement du contact...');
-                try {
-                    await saveContact(contactData);
-                    this.modalSystem.success('Contact enregistré avec succès !');
-                    this.modalSystem.hideNewContactModal();
-                    // Optionnel: recharger les contacts dans la liste si nécessaire
-                    // this.modalSystem.loadContacts(); 
-                } catch (error) {
-                    console.error('Erreur lors de l\'enregistrement du contact:', error);
-                    this.modalSystem.error('Erreur lors de l\'enregistrement du contact.');
-                } finally {
-                    this.modalSystem.hideLoading();
-                }
-            });
-        }
-    }
-}
-
-// Initialisation des systèmes après le chargement du DOM
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM chargé, initialisation...');
-    
-    // Initialiser le système de modals
-    const modalSystem = new ModalSystem();
-    const navigationSystem = new NavigationSystem();
-    const chatSystem = new ChatSystem(modalSystem);
-
-    // Exposer les systèmes globalement pour un accès facile
-    window.WhatsAppSystems = {
-        modalSystem,
-        navigationSystem,
-        chatSystem
-    };
-
-    // Initialiser les autres fonctionnalités
-    setupContextMenu();
-    setupSettingsPanel();
-    setupNewChatListeners();
-    
-    // Afficher un message de bienvenue
-    setTimeout(() => {
-        modalSystem.info(
-            'Bienvenue sur WhatsApp Web ! Cliquez sur "Nouveau chat" pour commencer.',
-            'Bien bienvenue'
-        );
-    }, 1000);
-    
-    // Gestion des erreurs globales
-    window.addEventListener('error', function(e) {
-        console.error('Erreur globale:', e.error);
-        modalSystem.error('Une erreur inattendue s\'est produite. Veuillez actualiser la page.');
-    });
-    
-    // Gestion des erreurs de promesses non capturées
-    window.addEventListener('unhandledrejection', function(e) {
-        console.error('Promesse rejetée:', e.reason);
-        modalSystem.error('Erreur de connexion. Veuillez vérifier votre connexion internet.');
-    });
-    
-    // Écouteur pour le bouton "Nouveau contact"
-    const newContactBtn = document.getElementById('newContactButton');
-    if (newContactBtn) {
-        newContactBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const chatSystem = window.WhatsAppSystems.chatSystem;
-            chatSystem.showNewContactForm();
-            
-            // Optionnel : fermer la prévisualisation du nouveau chat
-            const clone = document.getElementById('tempPreview');
-            const sidebarChats = document.getElementById('sidebarChats');
-            if (clone && sidebarChats) {
-                clone.remove();
-                sidebarChats.style.display = 'flex';
-            }
-        });
-    }
-});
-
