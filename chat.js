@@ -1542,26 +1542,25 @@ window.utils = {
 // Gestion de l'aperçu du nouveau chat
 document.addEventListener('DOMContentLoaded', function() {
     const plusIcon = document.querySelector('.fas.fa-plus-circle.text-xl');
-    const newChatPreview = document.getElementById('newChatPreview');
+    const sidebarChats = document.querySelector('#sidebarChats');
     const closePreview = document.getElementById('closePreview');
+    const previewContent = document.querySelector('#newChatPreview .h-full');
   
-    if (plusIcon && newChatPreview && closePreview) {
+    if (plusIcon && sidebarChats && closePreview && previewContent) {
         plusIcon.addEventListener('click', function() {
-            newChatPreview.classList.remove('hidden');
-            newChatPreview.classList.add('flex');
-        });
-    
-        closePreview.addEventListener('click', function() {
-            newChatPreview.classList.add('hidden');
-            newChatPreview.classList.remove('flex');
-        });
-    
-        // Fermer l'aperçu en cliquant à l'extérieur
-        newChatPreview.addEventListener('click', function(e) {
-            if (e.target === newChatPreview) {
-                newChatPreview.classList.add('hidden');
-                newChatPreview.classList.remove('flex');
-            }
+            // Cache la sidebar des chats
+            sidebarChats.style.display = 'none';
+            
+            // Clone le contenu de prévisualisation et l'insère à la place
+            const clone = previewContent.cloneNode(true);
+            clone.id = 'tempPreview';
+            sidebarChats.parentNode.insertBefore(clone, sidebarChats);
+            
+            // Ajoute l'événement de fermeture au clone
+            clone.querySelector('#closePreview').addEventListener('click', function() {
+                clone.remove();
+                sidebarChats.style.display = 'flex';
+            });
         });
     }
 });
