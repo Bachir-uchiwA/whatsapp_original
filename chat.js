@@ -89,6 +89,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Promesse rejetée:', e.reason);
         modalSystem.error('Erreur de connexion. Veuillez vérifier votre connexion internet.');
     });
+    
+    // Écouteur pour le bouton "Nouveau contact"
+    const newContactBtn = document.querySelector('.flex.items-center.w-full.p-2.text-white.hover\\:bg-gray-700.rounded-lg:nth-child(2)');
+    if (newContactBtn) {
+        newContactBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const chatSystem = window.WhatsAppSystems.chatSystem;
+            chatSystem.showNewContactForm();
+            
+            // Optionnel : fermer la prévisualisation du nouveau chat
+            const clone = document.getElementById('tempPreview');
+            const sidebarChats = document.getElementById('sidebarChats');
+            if (clone && sidebarChats) {
+                clone.remove();
+                sidebarChats.style.display = 'flex';
+            }
+        });
+    }
 });
 
 // Système de modals avec Tailwind CSS uniquement
