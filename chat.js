@@ -447,7 +447,7 @@ class NavigationSystem {
 
 class ChatSystem {
     constructor() {
-        this.messagesContainer = document.getElementById('messagesContainer'); // Cible uniquement l'élément principal
+        this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.sendIcon = document.getElementById('sendIcon');
@@ -542,9 +542,15 @@ class ChatSystem {
         this.currentContact = contacts.find(contact => contact.id === contactId);
         if (this.currentContact && this.messagesContainer) {
             const chatHeader = document.querySelector('.bg-gray-900 p-4 .text-white .font-semibold');
+            if (chatHeader) {
+                chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
+            } else {
+                console.error('Élément chatHeader non trouvé dans le DOM.');
+            }
             const chatAvatar = document.querySelector('.bg-gray-900 p-4 img');
-            if (chatHeader) chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
-            if (chatAvatar) chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
+            if (chatAvatar) {
+                chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
+            }
             this.loadMessages();
         } else {
             this.showDefaultMessage();
