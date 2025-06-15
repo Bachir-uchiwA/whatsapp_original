@@ -107,6 +107,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Ajout écouteur pour "Nouveau contact" dans #newChatPreview via id robuste
+    document.getElementById('newContactBtn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.WhatsAppSystems.modalSystem.showNewContactFormInPreview();
+        const sidebarChats = document.getElementById('sidebarChats');
+        if (sidebarChats) sidebarChats.style.display = 'none';
+    });
 });
 
 // Système de modals avec Tailwind CSS uniquement
@@ -844,69 +852,9 @@ class ChatSystem {
         chatItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.showNewContactForm();
+                // this.showNewContactForm(); // <-- Ne plus utiliser cette méthode
+                // Utiliser la méthode qui affiche dans #tempPreview si besoin
             });
-        });
-    }
-
-    showNewContactForm() {
-        const newContactHTML = `
-            <div class="bg-gray-900 p-4 rounded-lg max-w-md w-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-white text-lg font-bold">Nouveau contact</h2>
-                    <button id="newContactClose" class="text-gray-400 hover:text-white">&times;</button>
-                </div>
-                <div class="space-y-4">
-                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="flex items-center">
-                        <select id="contactCountryCode" class="w-20 p-2 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="+221">SN +221</option>
-                            <!-- Add more country codes as needed -->
-                        </select>
-                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="w-full p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <input type="checkbox" id="syncContact" class="text-blue-500 focus:ring-blue-500">
-                        <label for="syncContact" class="text-gray-400 text-sm">Synchroniser le contact sur le téléphone</label>
-                    </div>
-                    <button id="saveContactBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg">Enregistrer</button>
-                    <p class="text-gray-500 text-xs">Ce contact sera ajouté au carnet d'adresses de votre téléphone.</p>
-                </div>
-            </div>
-        `;
-
-        this.modalSystem.showModal(newContactHTML, 'custom');
-        
-        document.getElementById('newContactClose')?.addEventListener('click', () => {
-            this.modalSystem.hideModal();
-        });
-
-        document.getElementById('saveContactBtn')?.addEventListener('click', () => {
-            const firstName = document.getElementById('contactFirstName').value.trim();
-            const lastName = document.getElementById('contactLastName').value.trim();
-            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim();
-            const sync = document.getElementById('syncContact').checked;
-
-            if (firstName && lastName && phone) {
-                const contactData = {
-                    id: Date.now(),
-                    name: `${firstName} ${lastName}`,
-                    phone: phone,
-                    avatar: { color: 'bg-blue-500', initial: firstName.charAt(0).toUpperCase() },
-                    createdAt: new Date().toISOString()
-                };
-                saveContact(contactData).then(() => {
-                    this.modalSystem.success(`Contact ${contactData.name} ajouté avec succès !`);
-                    this.modalSystem.hideModal();
-                    this.modalSystem.loadContacts(); // Refresh contacts list if implemented
-                }).catch(error => {
-                    console.error('Error saving contact:', error);
-                    this.modalSystem.error('Erreur lors de l\'ajout du contact');
-                });
-            } else {
-                this.modalSystem.warning('Veuillez remplir tous les champs');
-            }
         });
     }
 }
