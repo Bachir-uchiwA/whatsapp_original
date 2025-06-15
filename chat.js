@@ -303,8 +303,8 @@ class ModalSystem {
                         <div class="mt-2">
                             ${contacts.map(contact => `
                                 <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                    <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
+                                    <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">${contact.avatar.initial}</span>
                                     </div>
                                     <div>
                                         <p class="text-white">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</p>
@@ -332,12 +332,22 @@ class ModalSystem {
         closeBtn?.addEventListener('click', () => {
             if (this.currentView === 'newChat' && this.tempPreview) {
                 this.hideNewChatInPreview();
-                const navigationSystem = window.WhatsAppSystems?.navigationSystem;
-                navigationSystem?.showChats();
             }
         });
         const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
-        newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
+        newContactBtn?.addEventListener('click', () => {
+            if (this.currentView === 'newChat' && this.tempPreview) {
+                this.hideNewChatInPreview();
+                this.showNewContactFormInPreview();
+            }
+        });
+        this.tempPreview.querySelectorAll('[data-contact-id]').forEach(contact => {
+            contact.addEventListener('click', () => {
+                const chatSystem = window.WhatsAppSystems?.chatSystem;
+                chatSystem?.selectContact(contact.dataset.contactId);
+                this.hideNewChatInPreview();
+            });
+        });
     }
 
     hideNewChatInPreview() {
@@ -353,320 +363,209 @@ class ModalSystem {
         this.hideLoadingModal();
     }
 
-    success(message, title = 'Succès') { this.showModal(message, 'success'); }
-    error(message, title = 'Erreur') { this.showModal(message, 'error'); }
-    warning(message, title = 'Attention') { this.showModal(message, 'warning'); }
-    info(message, title = 'Information') { this.showModal(message, 'info'); }
-    confirm(title, message, onConfirm, type = 'warning') { this.showConfirmModal(title, message, onConfirm, type); }
-    loading(message = 'Chargement...') { this.showLoadingModal(message); }
+    success(message) { this.showModal(message, 'success'); }
+    error(message) { this.showModal(message, 'error'); }
+    warning(message) { this.showModal(message, 'warning'); }
+    info(message) { this.showModal(message, 'info'); }
+    loading(message) { this.showLoadingModal(message); }
     hideLoading() { this.hideLoadingModal(); }
-}
-
-class NavigationSystem {
-    constructor() {
-        this.sidebarChats = document.getElementById('sidebarChats');
-        this.tempPreview = document.getElementById('tempPreview');
-        this.modalSystem = new ModalSystem();
-        this.currentView = 'chats';
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.showChats());
-        document.getElementById('settingsIcon')?.addEventListener('click', () => this.showSettings());
-        document.getElementById('menuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleContextMenu(); });
-        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showNewChat());
-        document.addEventListener('click', () => this.hideContextMenu());
-        document.getElementById('contextMenu')?.addEventListener('click', (e) => e.stopPropagation());
-    }
-
-    showChats() {
-        if (this.currentView === 'chats') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideSettingsInPreview();
-            this.modalSystem.hideNewChatInPreview();
-            this.sidebarChats.style.display = 'flex';
-            this.tempPreview.style.display = 'none';
-            this.currentView = 'chats';
-        });
-    }
-
-    showSettings() {
-        if (this.currentView === 'settings') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideNewChatInPreview();
-            this.modalSystem.showSettingsInPreview();
-            this.sidebarChats.style.display = 'none';
-            this.currentView = 'settings';
-        });
-    }
-
-    showNewChat() {
-        if (this.currentView === 'newChat') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideSettingsInPreview();
-            this.modalSystem.showNewChatInPreview();
-            this.sidebarChats.style.display = 'none';
-            this.currentView = 'newChat';
-        });
-    }
-
-    toggleContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (!contextMenu) return;
-        if (contextMenu.classList.contains('hidden')) {
-            contextMenu.classList.remove('hidden');
-            contextMenu.classList.add('animate-scale-in');
-        } else {
-            this.hideContextMenu();
-        }
-    }
-
-    hideContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (contextMenu && !contextMenu.classList.contains('hidden')) {
-            contextMenu.classList.remove('animate-scale-in');
-            contextMenu.classList.add('animate-scale-out');
-            setTimeout(() => { contextMenu.classList.add('hidden'); contextMenu.classList.remove('animate-scale-out'); }, 200);
-        }
-    }
-
-    animateTransition(callback) {
-        const elements = [this.sidebarChats, this.tempPreview].filter(el => el);
-        elements.forEach(el => el.classList.add('animate-fade-out'));
-        setTimeout(() => {
-            callback();
-            elements.forEach(el => el.classList.remove('animate-fade-out'));
-            elements.filter(el => !el.classList.contains('hidden')).forEach(el => el.classList.add('animate-fade-in'));
-        }, 200);
-    }
 }
 
 class ChatSystem {
     constructor() {
+        this.modalSystem = new ModalSystem();
+        this.currentChatId = null;
+        this.contactsList = document.getElementById('contactsList');
         this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.sendIcon = document.getElementById('sendIcon');
-        this.charCount = document.getElementById('charCount');
+        this.chatAvatarInitial = document.getElementById('chatAvatarInitial');
         this.typingIndicator = document.getElementById('typingIndicator');
-        this.emojiBtn = document.getElementById('emojiBtn');
-        this.emojiPanel = document.getElementById('emojiPanel');
-        this.attachBtn = document.getElementById('attachBtn');
-        this.modalSystem = new ModalSystem();
-        this.navigationSystem = new NavigationSystem();
-        this.currentChatId = null;
-        this.currentContact = null;
-        window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
+        this.sidebarChats = document.getElementById('sidebarChats');
+        this.newChatPreview = document.getElementById('newChatPreview');
+        this.sidebarSettings = document.getElementById('sidebarSettings');
+        this.contextMenu = document.getElementById('contextMenu');
         this.setupEventListeners();
-        this.loadInitialData();
-        this.showDefaultMessage();
+        window.WhatsAppSystems = window.WhatsAppSystems || {};
+        window.WhatsAppSystems.chatSystem = this;
+        this.loadContacts();
     }
 
     setupEventListeners() {
-        this.sendBtn?.addEventListener('click', () => this.handleSend());
-        this.messageInput?.addEventListener('input', (e) => this.updateCharCount(e.target.value));
-        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSend());
-        this.emojiBtn?.addEventListener('click', () => this.toggleEmojiPanel());
-        this.emojiPanel?.addEventListener('click', (e) => e.target.tagName === 'BUTTON' && this.addEmoji(e.target.textContent));
-        this.attachBtn?.addEventListener('click', () => this.showAttachmentOptions());
-        document.getElementById('chatMenuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleChatMenu(); });
-        document.getElementById('contextMenu')?.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A') {
-                e.preventDefault();
-                this.handleContextMenuAction(e.target.textContent);
+        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showNewChat());
+        document.getElementById('settingsIcon')?.addEventListener('click', () => this.showSettings());
+        document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.showChats());
+        document.getElementById('closePreview')?.addEventListener('click', () => this.hideNewChat());
+        document.getElementById('menuBtn')?.addEventListener('click', (e) => this.toggleContextMenu(e));
+        document.addEventListener('click', (e) => {
+            if (!this.contextMenu.contains(e.target) && e.target !== document.getElementById('menuBtn')) {
+                this.contextMenu.classList.add('hidden');
             }
         });
-        const contactsList = document.getElementById('contactsList');
-        contactsList?.addEventListener('click', (e) => {
-            const contactElement = e.target.closest('div[data-contact-id]');
-            if (contactElement) {
-                const contactId = contactElement.getAttribute('data-contact-id');
-                this.selectContact(contactId);
-            }
+        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+        this.sendBtn?.addEventListener('click', () => this.sendMessage());
+        this.messageInput?.addEventListener('input', (e) => {
+            const charCount = document.getElementById('charCount');
+            if (charCount) charCount.textContent = e.target.value.length;
+            this.sendIcon.className = e.target.value.trim() ? 'fas fa-paper-plane text-xl' : 'fas fa-microphone text-xl';
         });
+        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && this.sendMessage());
     }
 
-    async loadInitialData() {
+    async loadContacts() {
         try {
+            this.modalSystem.loading('Chargement des contacts...');
             const contacts = await getContacts();
-            const contactsList = document.getElementById('contactsList');
-            if (contactsList) {
-                contactsList.innerHTML = contacts.map(contact => `
-                    <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
-                                <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
-                            </div>
-                            <div class="text-gray-400 text-sm">${contact.phone}</div>
-                        </div>
-                    </div>
-                `).join('');
-            }
+            this.renderContacts(contacts);
+            this.modalSystem.hideLoading();
         } catch (error) {
             console.error('Erreur lors du chargement des contacts:', error);
             this.modalSystem.error('Erreur lors du chargement des contacts.');
         }
     }
 
-    showDefaultMessage() {
-        if (this.messagesContainer) {
-            this.messagesContainer.innerHTML = `
-                <div class="text-center text-gray-400 p-4">
-                    Sélectionnez une discussion pour commencer
+    renderContacts(contacts) {
+        if (!this.contactsList) return;
+        this.contactsList.innerHTML = contacts.map(contact => `
+            <div class="flex items-center p-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
+                <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                    <span class="text-white font-bold">${contact.avatar.initial}</span>
                 </div>
-            `;
-        }
-    }
-
-    updateCharCount(text) {
-        const count = text.length;
-        this.charCount.textContent = `${count}`;
-        if (count > 0) {
-            this.sendIcon.className = 'fas fa-paper-plane text-xl';
-        } else {
-            this.sendIcon.className = 'fas fa-microphone text-xl';
-        }
+                <div class="flex-1">
+                    <div class="text-white font-medium">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</div>
+                    <div class="text-gray-400 text-sm truncate">${contact.lastMessage?.text || 'Aucun message'}</div>
+                </div>
+                <div class="text-gray-400 text-xs">${new Date(contact.lastMessage?.timestamp || contact.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+        `).join('');
+        this.contactsList.querySelectorAll('[data-contact-id]').forEach(contact => {
+            contact.addEventListener('click', () => this.selectContact(contact.dataset.contactId));
+        });
     }
 
     async selectContact(contactId) {
-        this.currentChatId = contactId;
-        const contacts = await getContacts();
-        this.currentContact = contacts.find(contact => contact.id === contactId);
-        if (this.currentContact && this.messagesContainer) {
-            const chatHeader = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
-            if (chatHeader) {
-                chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
-            } else {
-                console.error('Élément chatHeader non trouvé dans le DOM.');
-            }
-            const chatAvatar = document.querySelector('.bg-gray-900.p-4 img');
-            if (chatAvatar) {
-                chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
-            }
-            this.loadMessages();
-        } else {
-            this.showDefaultMessage();
-        }
-    }
-
-    async loadMessages() {
-        if (!this.currentChatId || !this.messagesContainer) return;
         try {
-            const messages = await getMessages(this.currentChatId);
+            this.currentChatId = contactId;
+            const contacts = await getContacts();
+            const contact = contacts.find(c => c.id === contactId);
+            if (!contact) throw new Error('Contact non trouvé');
+            this.chatAvatarInitial.textContent = contact.avatar.initial;
+            document.querySelector('.font-semibold.text-lg').textContent = contact.fullName || `${contact.firstName} ${contact.lastName}`;
             this.messagesContainer.innerHTML = '';
-            if (messages.length === 0) {
-                this.messagesContainer.innerHTML = `
-                    <div class="text-center text-gray-500 text-sm py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        </div>
-                    </div>
-                `;
-            } else {
-                messages.forEach(message => this.addMessage(message));
-            }
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            this.modalSystem.loading('Chargement des messages...');
+            const messages = await getMessages(contactId);
+            this.renderMessages(messages);
+            this.modalSystem.hideLoading();
+            this.sidebarChats.style.display = 'none';
+            this.newChatPreview.style.display = 'none';
+            this.sidebarSettings.style.display = 'none';
         } catch (error) {
-            console.error('Erreur lors du chargement des messages:', error);
+            console.error('Erreur lors de la sélection du contact:', error);
             this.modalSystem.error('Erreur lors du chargement des messages.');
         }
     }
 
-    handleSend() {
-        const message = this.messageInput.value.trim();
-        if (!message || !this.currentChatId || !this.messagesContainer) return;
-        const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
-        this.addMessage(messageData);
-        this.messageInput.value = '';
-        this.updateCharCount('');
-        this.simulateTypingIndicator();
-        saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
-    }
-
-    addMessage(messageData) {
+    renderMessages(messages) {
         if (!this.messagesContainer) return;
-        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Sélectionnez une discussion')) {
-            this.messagesContainer.innerHTML = '';
-        }
-        const messageElement = document.createElement('div');
-        messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
-        messageElement.innerHTML = `
-            <div class="text-white">${messageData.content}</div>
-            <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
-        `;
-        this.messagesContainer.appendChild(messageElement);
+        this.messagesContainer.innerHTML = messages
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+            .map(message => `
+                <div class="max-w-[70%] ${message.senderId === 'self' ? 'ml-auto bg-green-600' : 'bg-gray-700'} p-2 rounded-lg text-white">
+                    ${message.text}
+                    <div class="text-xs text-gray-300 mt-1">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            `).join('');
         this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
-    simulateTypingIndicator() {
-        if (!this.typingIndicator) return;
-        this.typingIndicator.classList.remove('hidden');
-        setTimeout(() => this.typingIndicator.classList.add('hidden'), 2000);
+    sendMessage() {
+        const text = this.messageInput.value.trim();
+        if (!text || !this.currentChatId) return;
+        const messageData = {
+            id: Date.now().toString(),
+            chatId: this.currentChatId,
+            senderId: 'self',
+            text: text,
+            timestamp: new Date().toISOString()
+        };
+        this.modalSystem.loading('Envoi du message...');
+        saveMessage(messageData).then(() => {
+            this.messageInput.value = '';
+            document.getElementById('charCount').textContent = '0';
+            this.sendIcon.className = 'fas fa-microphone text-xl';
+            this.renderMessages([...this.messagesContainer.children].map(m => JSON.parse(m.dataset.message)).concat(messageData));
+            this.modalSystem.hideLoading();
+            this.modalSystem.success('Message envoyé !');
+        }).catch(error => {
+            console.error('Erreur lors de l\'envoi du message:', error);
+            this.modalSystem.hideLoading();
+            this.modalSystem.error('Erreur lors de l\'envoi du message.');
+        });
     }
 
-    toggleEmojiPanel() {
-        if (!this.emojiPanel) return;
-        this.emojiPanel.classList.toggle('hidden');
+    showNewChat() {
+        this.newChatPreview.style.display = 'block';
+        this.modalSystem.showNewChatInPreview();
+        this.sidebarChats.style.display = 'none';
+        this.sidebarSettings.style.display = 'none';
     }
 
-    addEmoji(emoji) {
-        if (!this.messageInput) return;
-        this.messageInput.value += emoji;
-        this.updateCharCount(this.messageInput.value);
-        this.emojiPanel.classList.add('hidden');
+    hideNewChat() {
+        this.newChatPreview.style.display = 'none';
+        this.modalSystem.hideNewChatInPreview();
+        this.sidebarChats.style.display = 'flex';
     }
 
-    showAttachmentOptions() {
-        this.modalSystem.info('Option d\'attachement non implémentée.');
+    showSettings() {
+        this.sidebarSettings.style.display = 'flex';
+        this.modalSystem.showSettingsInPreview();
+        this.sidebarChats.style.display = 'none';
+        this.newChatPreview.style.display = 'none';
     }
 
-    toggleChatMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (contextMenu) {
-            const rect = document.getElementById('chatMenuBtn').getBoundingClientRect();
-            contextMenu.style.left = `${rect.left - 150}px`;
-            contextMenu.style.top = `${rect.bottom + 5}px`;
-            this.navigationSystem.toggleContextMenu();
+    hideSettings() {
+        this.sidebarSettings.style.display = 'none';
+        this.modalSystem.hideSettingsInPreview();
+        this.sidebarChats.style.display = 'flex';
+    }
+
+    showChats() {
+        this.sidebarChats.style.display = 'flex';
+        this.newChatPreview.style.display = 'none';
+        this.sidebarSettings.style.display = 'none';
+    }
+
+    toggleContextMenu(event) {
+        if (this.contextMenu.classList.contains('hidden')) {
+            this.contextMenu.style.left = `${event.pageX}px`;
+            this.contextMenu.style.top = `${event.pageY}px`;
+            this.contextMenu.classList.remove('hidden');
+            this.contextMenu.classList.add('animate-scale-in');
+        } else {
+            this.contextMenu.classList.add('animate-scale-out');
+            setTimeout(() => this.contextMenu.classList.add('hidden'), 200);
+            this.contextMenu.classList.remove('animate-scale-in');
         }
-    }
-
-    handleContextMenuAction(action) {
-        switch (action) {
-            case 'Nouveau groupe':
-                this.modalSystem.info('Fonctionnalité "Nouveau groupe" non implémentée.');
-                break;
-            case 'Archiver le chat':
-                this.modalSystem.info('Chat archivé.');
-                break;
-            case 'Épingler le chat':
-                this.modalSystem.info('Chat épinglé.');
-                break;
-            case 'Supprimer le chat':
-                this.modalSystem.confirm('Supprimer le chat', 'Voulez-vous vraiment supprimer ce chat ?', () => this.modalSystem.success('Chat supprimé avec succès.'));
-                break;
-            case 'Se déconnecter':
-                this.logout();
-                break;
-        }
-        this.navigationSystem.hideContextMenu();
     }
 
     logout() {
-        this.modalSystem.confirm('Déconnexion', 'Voulez-vous vous déconnecter ?', () => {
-            this.modalSystem.success('Déconnexion réussie.');
-            setTimeout(() => window.location.href = '/login.html', 1000);
-        }, 'question');
+        this.modalSystem.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => {
+            this.currentChatId = null;
+            this.messagesContainer.innerHTML = '';
+            this.messageInput.value = '';
+            document.getElementById('charCount').textContent = '0';
+            this.sendIcon.className = 'fas fa-microphone text-xl';
+            this.chatAvatarInitial.textContent = '';
+            document.querySelector('.font-semibold.text-lg').textContent = '';
+            this.sidebarChats.style.display = 'flex';
+            this.newChatPreview.style.display = 'none';
+            this.sidebarSettings.style.display = 'none';
+            this.modalSystem.success('Déconnexion réussie !');
+        });
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new ChatSystem());
+document.addEventListener('DOMContentLoaded', () => {
+    new ChatSystem();
+});
