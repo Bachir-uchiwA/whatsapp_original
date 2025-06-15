@@ -303,8 +303,8 @@ class ModalSystem {
                         <div class="mt-2">
                             ${contacts.map(contact => `
                                 <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                    <div class="${contact.avatar?.color || 'bg-green-500'} w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">${contact.avatar?.initial || contact.firstName.charAt(0).toUpperCase()}</span>
+                                    <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">${contact.avatar.initial}</span>
                                     </div>
                                     <div>
                                         <p class="text-white">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</p>
@@ -447,6 +447,7 @@ class NavigationSystem {
 
 class ChatSystem {
     constructor() {
+        this.chatArea = document.querySelector('.flex-1.flex.flex-col.bg-gray-800');
         this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
@@ -456,8 +457,6 @@ class ChatSystem {
         this.emojiBtn = document.getElementById('emojiBtn');
         this.emojiPanel = document.getElementById('emojiPanel');
         this.attachBtn = document.getElementById('attachBtn');
-        this.chatHeader = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
-        this.chatAvatarInitial = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 #chatAvatarInitial');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
         this.currentChatId = null;
@@ -499,8 +498,8 @@ class ChatSystem {
             if (contactsList) {
                 contactsList.innerHTML = contacts.map(contact => `
                     <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="${contact.avatar?.color || 'bg-green-500'} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.avatar?.initial || contact.firstName.charAt(0).toUpperCase()}</span>
+                        <div class="${contact.avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold">${contact.avatar.initial}</span>
                         </div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center">
@@ -519,9 +518,9 @@ class ChatSystem {
     }
 
     showDefaultView() {
-        if (this.messagesContainer) {
-            this.messagesContainer.innerHTML = `
-                <div class="flex-1 flex flex-col bg-gray-800 items-center justify-center w-full h-full">
+        if (this.chatArea) {
+            this.chatArea.innerHTML = `
+                <div class="flex-1 bg-gray-800 flex items-center justify-center">
                     <div class="text-center max-w-md">
                         <!-- WhatsApp Web Illustration -->
                         <div class="mb-8 relative">
@@ -556,7 +555,6 @@ class ChatSystem {
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Laptop à droite, incliné -->
                                 <div class="absolute right-2 top-10 w-40 h-28 z-20" style="transform: rotate(3deg);">
                                     <!-- Écran -->
                                     <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
@@ -604,13 +602,53 @@ class ChatSystem {
         this.currentChatId = contactId;
         const contacts = await getContacts();
         this.currentContact = contacts.find(contact => contact.id === contactId);
-        if (this.currentContact && this.messagesContainer) {
-            if (this.chatHeader) {
-                this.chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
-            }
-            if (this.chatAvatarInitial) {
-                this.chatAvatarInitial.textContent = this.currentContact.avatar?.initial || this.currentContact.firstName.charAt(0).toUpperCase();
-            }
+        if (this.currentContact && this.chatArea) {
+            this.chatArea.innerHTML = `
+                <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-green-500 w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
+                            <span id="chatAvatarInitial" class="text-white font-bold">${this.currentContact.avatar.initial}</span>
+                        </div>
+                        <div class="text-white">
+                            <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</div>
+                            <div id="typingIndicator" class="text-gray-400 text-sm hidden">En train d'écrire...</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <!-- Boutons -->
+                    </div>
+                </div>
+                <div class="flex-1 p-4 overflow-y-auto scrollbar-thin">
+                    <div id="messagesContainer" class="flex flex-col space-y-4">
+                    </div>
+                </div>
+                <div class="bg-gray-900 p-4 border-t border-gray-700">
+                    <div class="flex items-center space-x-4">
+                        <button id="emojiBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                            <i class="far fa-smile text-xl"></i>
+                        </button>
+                        <button id="attachBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                            <i class="fas fa-paperclip text-xl"></i>
+                        </button>
+                        <div class="flex-1 relative">
+                            <input id="messageInput" type="text" placeholder="Écrivez un message" class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200">
+                            <span id="charCount" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">0</span>
+                        </div>
+                        <button id="sendBtn" class="bg-green-600 hover:bg-green-700 text-white rounded-full p-2 transition-colors duration-200">
+                            <i id="sendIcon" class="fas fa-microphone text-xl"></i>
+                        </button>
+                    </div>
+                    <div id="emojiPanel" class="hidden absolute bottom-20 right-4 bg-gray-800 rounded-lg p-4 shadow-lg grid grid-cols-6 gap-2">
+                        <button class="text-2xl">😊</button>
+                        <button class="text-2xl">😂</button>
+                        <button class="text-2xl">😍</button>
+                        <button class="text-2xl">👍</button>
+                        <button class="text-2xl">🙌</button>
+                        <button class="text-2xl">🎉</button>
+                    </div>
+                </div>
+            `;
+            this.setupEventListeners();
             this.loadMessages();
         }
     }
@@ -618,34 +656,21 @@ class ChatSystem {
     async loadMessages() {
         if (!this.currentChatId || !this.messagesContainer) return;
         try {
-            this.messagesContainer.innerHTML = '';
             const messages = await getMessages(this.currentChatId);
+            this.messagesContainer.innerHTML = '';
             if (messages.length === 0) {
                 this.messagesContainer.innerHTML = `
-                    <div class="flex flex-col space-y-4 w-full h-full">
-                        <div class="text-center text-gray-500 text-sm py-4">
-                            <div class="flex items-center justify-center gap-2">
-                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                                <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
-                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            </div>
+                    <div class="text-center text-gray-500 text-sm py-4">
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
                         </div>
                     </div>
                 `;
             } else {
-                this.messagesContainer.innerHTML = `
-                    <div class="flex flex-col space-y-4 w-full h-full">
-                        ${messages.map(message => `
-                            <div class="p-3 rounded-lg max-w-[70%] ${message.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}">
-                                <div class="text-white">${message.content}</div>
-                                <div class="text-xs text-gray-300 mt-1">${new Date(message.timestamp).toLocaleTimeString()}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+                messages.forEach(message => this.addMessage(message));
             }
-            this.messagesContainer.classList.remove('flex-1', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
-            this.messagesContainer.classList.add('flex', 'flex-col', 'space-y-4', 'p-4', 'overflow-y-auto', 'scrollbar-thin', 'w-full', 'h-full');
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
@@ -666,6 +691,9 @@ class ChatSystem {
 
     addMessage(messageData) {
         if (!this.messagesContainer) return;
+        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Vous êtes maintenant connecté')) {
+            this.messagesContainer.innerHTML = '';
+        }
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
