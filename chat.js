@@ -193,7 +193,7 @@ class ModalSystem {
                 lastName: lastName,
                 fullName: `${firstName} ${lastName}`,
                 phone: phone,
-                country: phone.slice(1, 3), // Extrait le code pays à partir du numéro
+                country: phone.slice(1, 3),
                 avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
                 createdAt: new Date().toISOString()
             };
@@ -458,12 +458,10 @@ class ChatSystem {
         this.attachBtn = document.getElementById('attachBtn');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
-        // Désactivation temporaire des mises à jour en temps réel car SSE n'est pas supporté
-        // this.eventSource = new EventSource(`${API_BASE_URL}/events`);
         window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
-        // this.setupRealTimeUpdates(); // Commenté pour éviter l'erreur 404
+        this.showDefaultMessage(); // Ajout d'un message par défaut au démarrage
     }
 
     setupEventListeners() {
@@ -508,6 +506,16 @@ class ChatSystem {
         }
     }
 
+    showDefaultMessage() {
+        if (this.messagesContainer) {
+            this.messagesContainer.innerHTML = `
+                <div class="text-center text-gray-400 p-4">
+                    Sélectionnez une discussion pour commencer
+                </div>
+            `;
+        }
+    }
+
     updateCharCount(text) {
         const count = text.length;
         this.charCount.textContent = `${count}`;
@@ -531,6 +539,10 @@ class ChatSystem {
 
     addMessage(messageData) {
         if (!this.messagesContainer) return;
+        // Efface le message par défaut avant d'ajouter un nouveau message
+        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Sélectionnez une discussion')) {
+            this.messagesContainer.innerHTML = '';
+        }
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
@@ -599,67 +611,6 @@ class ChatSystem {
             this.modalSystem.success('Déconnexion réussie.');
             setTimeout(() => window.location.href = '/login.html', 1000);
         }, 'question');
-    }
-
-    // Désactivation temporaire des mises à jour en temps réel
-    // setupRealTimeUpdates() {
-    //     this.eventSource.addEventListener('new-message', (event) => {
-    //         const messageData = JSON.parse(event.data);
-    //         if (messageData.chatId === '1') {
-    //             this.addMessage(messageData);
-    //             this.modalSystem.showToast(`Nouveau message de ${messageData.sender}`, 'success');
-    //         }
-    //     });
-
-    //     this.eventSource.addEventListener('contact-updated', (event) => {
-    //         const contactData = JSON.parse(event.data);
-    //         this.updateContactList(contactData);
-    //         this.modalSystem.showToast(`Contact mis à jour : ${contactData.name}`, 'info');
-    //     });
-
-    //     this.eventSource.addEventListener('error', () => {
-    //         console.error('Erreur de connexion SSE');
-    //         this.modalSystem.error('Perte de connexion en temps réel. Réessayez plus tard.');
-    //         this.eventSource.close();
-    //         setTimeout(() => this.setupRealTimeUpdates(), 5000);
-    //     });
-    // }
-
-    updateContactList(contact) {
-        const contactsList = document.getElementById('contactsList');
-        if (!contactsList) return;
-        let contactElement = contactsList.querySelector(`[data-contact-id="${contact.id}"]`);
-        if (contactElement) {
-            contactElement.outerHTML = `
-                <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
-                            <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
-                        </div>
-                        <div class="text-gray-400 text-sm">${contact.phone}</div>
-                    </div>
-                </div>
-            `;
-        } else {
-            contactsList.innerHTML += `
-                <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
-                            <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
-                        </div>
-                        <div class="text-gray-400 text-sm">${contact.phone}</div>
-                    </div>
-                </div>
-            `;
-        }
     }
 }
 
