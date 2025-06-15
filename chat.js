@@ -541,13 +541,13 @@ class ChatSystem {
         const contacts = await getContacts();
         this.currentContact = contacts.find(contact => contact.id === contactId);
         if (this.currentContact && this.messagesContainer) {
-            const chatHeader = document.querySelector('.bg-gray-900 p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
+            const chatHeader = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
             if (chatHeader) {
                 chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
             } else {
                 console.error('Élément chatHeader non trouvé dans le DOM.');
             }
-            const chatAvatar = document.querySelector('.bg-gray-900 p-4 img');
+            const chatAvatar = document.querySelector('.bg-gray-900.p-4 img');
             if (chatAvatar) {
                 chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
             }
