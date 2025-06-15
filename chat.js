@@ -622,19 +622,30 @@ class ChatSystem {
             const messages = await getMessages(this.currentChatId);
             if (messages.length === 0) {
                 this.messagesContainer.innerHTML = `
-                    <div class="text-center text-gray-500 text-sm py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                    <div class="flex flex-col space-y-4 w-full h-full">
+                        <div class="text-center text-gray-500 text-sm py-4">
+                            <div class="flex items-center justify-center gap-2">
+                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                                <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
+                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                            </div>
                         </div>
                     </div>
                 `;
             } else {
-                messages.forEach(message => this.addMessage(message));
+                this.messagesContainer.innerHTML = `
+                    <div class="flex flex-col space-y-4 w-full h-full">
+                        ${messages.map(message => `
+                            <div class="p-3 rounded-lg max-w-[70%] ${message.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}">
+                                <div class="text-white">${message.content}</div>
+                                <div class="text-xs text-gray-300 mt-1">${new Date(message.timestamp).toLocaleTimeString()}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
             }
             this.messagesContainer.classList.remove('flex-1', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
-            this.messagesContainer.classList.add('flex', 'flex-col', 'space-y-4', 'p-4', 'overflow-y-auto', 'scrollbar-thin');
+            this.messagesContainer.classList.add('flex', 'flex-col', 'space-y-4', 'p-4', 'overflow-y-auto', 'scrollbar-thin', 'w-full', 'h-full');
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
