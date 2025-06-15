@@ -169,7 +169,7 @@ class ModalSystem {
         backBtn?.addEventListener('click', () => {
             if (this.currentView === 'newContact' && this.tempPreview) {
                 this.hideNewContactFormInPreview();
-                this.showNewChatInPreview(); // Retour à la vue "Nouvelle discussion"
+                this.showNewChatInPreview();
             }
         });
         const saveBtn = this.tempPreview.querySelector('#saveContactBtn');
@@ -187,15 +187,28 @@ class ModalSystem {
                 this.warning('Veuillez entrer un numéro de téléphone valide.');
                 return;
             }
-            const contactData = { id: Date.now(), name: `${firstName} ${lastName}`, phone, avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() }, createdAt: new Date().toISOString() };
+            const contactData = {
+                id: Date.now().toString(),
+                firstName: firstName,
+                lastName: lastName,
+                fullName: `${firstName} ${lastName}`,
+                phone: phone,
+                country: phone.slice(1, 3), // Extrait le code pays à partir du numéro
+                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
+                createdAt: new Date().toISOString()
+            };
             this.loading('Ajout du contact...');
             saveContact(contactData).then(() => {
                 this.hideLoading();
-                this.success(`Contact ${contactData.name} ajouté avec succès !`);
+                this.success(`Contact ${contactData.fullName} ajouté avec succès !`);
                 this.hideNewContactFormInPreview();
-                this.showNewChatInPreview(); // Retour à la vue "Nouvelle discussion" après sauvegarde
-                this.showToast(`Nouveau contact : ${contactData.name}`, 'success');
-            }).catch(error => { console.error('Erreur lors de l\'ajout du contact:', error); this.hideLoading(); this.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.'); });
+                this.showNewChatInPreview();
+                this.showToast(`Nouveau contact : ${contactData.fullName}`, 'success');
+            }).catch(error => {
+                console.error('Erreur lors de l\'ajout du contact:', error);
+                this.hideLoading();
+                this.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.');
+            });
         });
     }
 
@@ -290,11 +303,11 @@ class ModalSystem {
                         <div class="mt-2">
                             ${contacts.map(contact => `
                                 <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                    <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">${contact.avatar.initial}</span>
+                                    <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
                                     </div>
                                     <div>
-                                        <p class="text-white">${contact.name}</p>
+                                        <p class="text-white">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</p>
                                         <p class="text-gray-400 text-sm">${contact.phone}</p>
                                     </div>
                                 </div>
@@ -445,11 +458,12 @@ class ChatSystem {
         this.attachBtn = document.getElementById('attachBtn');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
-        this.eventSource = new EventSource(`${API_BASE_URL}/events`);
+        // Désactivation temporaire des mises à jour en temps réel car SSE n'est pas supporté
+        // this.eventSource = new EventSource(`${API_BASE_URL}/events`);
         window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
-        this.setupRealTimeUpdates();
+        // this.setupRealTimeUpdates(); // Commenté pour éviter l'erreur 404
     }
 
     setupEventListeners() {
@@ -475,13 +489,13 @@ class ChatSystem {
             if (contactsList) {
                 contactsList.innerHTML = contacts.map(contact => `
                     <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="${contact.avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.avatar.initial}</span>
+                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
                         </div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center">
-                                <span class="text-white font-semibold">${contact.name}</span>
-                                <span class="text-gray-500 text-xs">${new Date(contact.createdAt).toLocaleTimeString()}</span>
+                                <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
+                                <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
                             </div>
                             <div class="text-gray-400 text-sm">${contact.phone}</div>
                         </div>
@@ -587,28 +601,29 @@ class ChatSystem {
         }, 'question');
     }
 
-    setupRealTimeUpdates() {
-        this.eventSource.addEventListener('new-message', (event) => {
-            const messageData = JSON.parse(event.data);
-            if (messageData.chatId === '1') {
-                this.addMessage(messageData);
-                this.modalSystem.showToast(`Nouveau message de ${messageData.sender}`, 'success');
-            }
-        });
+    // Désactivation temporaire des mises à jour en temps réel
+    // setupRealTimeUpdates() {
+    //     this.eventSource.addEventListener('new-message', (event) => {
+    //         const messageData = JSON.parse(event.data);
+    //         if (messageData.chatId === '1') {
+    //             this.addMessage(messageData);
+    //             this.modalSystem.showToast(`Nouveau message de ${messageData.sender}`, 'success');
+    //         }
+    //     });
 
-        this.eventSource.addEventListener('contact-updated', (event) => {
-            const contactData = JSON.parse(event.data);
-            this.updateContactList(contactData);
-            this.modalSystem.showToast(`Contact mis à jour : ${contactData.name}`, 'info');
-        });
+    //     this.eventSource.addEventListener('contact-updated', (event) => {
+    //         const contactData = JSON.parse(event.data);
+    //         this.updateContactList(contactData);
+    //         this.modalSystem.showToast(`Contact mis à jour : ${contactData.name}`, 'info');
+    //     });
 
-        this.eventSource.addEventListener('error', () => {
-            console.error('Erreur de connexion SSE');
-            this.modalSystem.error('Perte de connexion en temps réel. Réessayez plus tard.');
-            this.eventSource.close();
-            setTimeout(() => this.setupRealTimeUpdates(), 5000);
-        });
-    }
+    //     this.eventSource.addEventListener('error', () => {
+    //         console.error('Erreur de connexion SSE');
+    //         this.modalSystem.error('Perte de connexion en temps réel. Réessayez plus tard.');
+    //         this.eventSource.close();
+    //         setTimeout(() => this.setupRealTimeUpdates(), 5000);
+    //     });
+    // }
 
     updateContactList(contact) {
         const contactsList = document.getElementById('contactsList');
@@ -617,13 +632,13 @@ class ChatSystem {
         if (contactElement) {
             contactElement.outerHTML = `
                 <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                    <div class="${contact.avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.avatar.initial}</span>
+                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold">${contact.name}</span>
-                            <span class="text-gray-500 text-xs">${new Date(contact.createdAt).toLocaleTimeString()}</span>
+                            <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
+                            <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
                         </div>
                         <div class="text-gray-400 text-sm">${contact.phone}</div>
                     </div>
@@ -632,13 +647,13 @@ class ChatSystem {
         } else {
             contactsList.innerHTML += `
                 <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                    <div class="${contact.avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.avatar.initial}</span>
+                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold">${contact.name}</span>
-                            <span class="text-gray-500 text-xs">${new Date(contact.createdAt).toLocaleTimeString()}</span>
+                            <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
+                            <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
                         </div>
                         <div class="text-gray-400 text-sm">${contact.phone}</div>
                     </div>
