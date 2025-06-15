@@ -301,17 +301,20 @@ class ModalSystem {
                     <div class="p-4 border-t-2 border-gray-700">
                         <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
                         <div class="mt-2">
-                            ${contacts.map(contact => `
-                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                    <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">${contact.avatar.initial}</span>
+                            ${contacts.map(contact => {
+                                const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
+                                return `
+                                    <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
+                                        <div class="${avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                            <span class="text-white font-bold">${avatar.initial}</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
+                                            <p class="text-gray-400 text-sm">${contact.phone || ''}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-white">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</p>
-                                        <p class="text-gray-400 text-sm">${contact.phone}</p>
-                                    </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                             <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
                                     <span class="text-white font-bold">B</span>
@@ -496,20 +499,23 @@ class ChatSystem {
             const contacts = await getContacts();
             const contactsList = document.getElementById('contactsList');
             if (contactsList) {
-                contactsList.innerHTML = contacts.map(contact => `
-                    <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="${contact.avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.avatar.initial}</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center">
-                                <span class="text-white font-semibold">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</span>
-                                <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
+                contactsList.innerHTML = contacts.map(contact => {
+                    const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
+                    return `
+                        <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
+                            <div class="${avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                                <span class="text-white font-bold">${avatar.initial}</span>
                             </div>
-                            <div class="text-gray-400 text-sm">${contact.phone}</div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
+                                    <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
+                                </div>
+                                <div class="text-gray-400 text-sm">${contact.phone || ''}</div>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
         } catch (error) {
             console.error('Erreur lors du chargement des contacts:', error);
@@ -603,14 +609,15 @@ class ChatSystem {
         const contacts = await getContacts();
         this.currentContact = contacts.find(contact => contact.id === contactId);
         if (this.currentContact && this.chatArea) {
+            const avatar = this.currentContact.avatar || { color: 'bg-green-500', initial: (this.currentContact.firstName?.charAt(0) || 'A').toUpperCase() };
             this.chatArea.innerHTML = `
                 <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
                     <div class="flex items-center space-x-3">
-                        <div class="bg-green-500 w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
-                            <span id="chatAvatarInitial" class="text-white font-bold">${this.currentContact.avatar.initial}</span>
+                        <div class="${avatar.color} w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
+                            <span id="chatAvatarInitial" class="text-white font-bold">${avatar.initial}</span>
                         </div>
                         <div class="text-white">
-                            <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</div>
+                            <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</div>
                             <div id="typingIndicator" class="text-gray-400 text-sm hidden">En train d'écrire...</div>
                         </div>
                     </div>
@@ -663,7 +670,7 @@ class ChatSystem {
                     <div class="text-center text-gray-500 text-sm py-4">
                         <div class="flex items-center justify-center gap-2">
                             <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
+                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</span>
                             <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
                         </div>
                     </div>
