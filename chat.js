@@ -302,7 +302,7 @@ class ModalSystem {
                         <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
                         <div class="mt-2">
                             ${contacts.map(contact => `
-                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
                                     <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
                                         <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
                                     </div>
@@ -447,7 +447,7 @@ class NavigationSystem {
 
 class ChatSystem {
     constructor() {
-        this.messagesContainer = document.getElementById('messagesContainer');
+        this.messagesContainer = document.querySelector('.flex-1 p-4 overflow-y-auto scrollbar-thin #messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.sendIcon = document.getElementById('sendIcon');
@@ -458,10 +458,12 @@ class ChatSystem {
         this.attachBtn = document.getElementById('attachBtn');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
+        this.currentChatId = null;
+        this.currentContact = null;
         window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
-        this.showDefaultMessage(); // Ajout d'un message par défaut au démarrage
+        this.showDefaultMessage();
     }
 
     setupEventListeners() {
@@ -476,6 +478,14 @@ class ChatSystem {
             if (e.target.tagName === 'A') {
                 e.preventDefault();
                 this.handleContextMenuAction(e.target.textContent);
+            }
+        });
+        const contactsList = document.getElementById('contactsList');
+        contactsList?.addEventListener('click', (e) => {
+            const contactElement = e.target.closest('div[data-contact-id]');
+            if (contactElement) {
+                const contactId = contactElement.getAttribute('data-contact-id');
+                this.selectContact(contactId);
             }
         });
     }
@@ -526,10 +536,48 @@ class ChatSystem {
         }
     }
 
+    async selectContact(contactId) {
+        this.currentChatId = contactId;
+        const contacts = await getContacts();
+        this.currentContact = contacts.find(contact => contact.id === contactId);
+        if (this.currentContact) {
+            const chatHeader = document.querySelector('.bg-gray-900 p-4 .text-white .font-semibold');
+            const chatAvatar = document.querySelector('.bg-gray-900 p-4 img');
+            if (chatHeader) chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
+            if (chatAvatar) chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
+            this.loadMessages();
+        }
+    }
+
+    async loadMessages() {
+        if (!this.currentChatId) return;
+        try {
+            const messages = await getMessages(this.currentChatId);
+            this.messagesContainer.innerHTML = '';
+            if (messages.length === 0) {
+                this.messagesContainer.innerHTML = `
+                    <div class="text-center text-gray-500 text-sm py-4">
+                        <div class="flex items-center justify-center gap-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`}</span>
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messages.forEach(message => this.addMessage(message));
+            }
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        } catch (error) {
+            console.error('Erreur lors du chargement des messages:', error);
+            this.modalSystem.error('Erreur lors du chargement des messages.');
+        }
+    }
+
     handleSend() {
         const message = this.messageInput.value.trim();
-        if (!message) return;
-        const messageData = { id: Date.now(), chatId: '1', sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
+        if (!message || !this.currentChatId) return;
+        const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
         this.addMessage(messageData);
         this.messageInput.value = '';
         this.updateCharCount('');
@@ -539,7 +587,6 @@ class ChatSystem {
 
     addMessage(messageData) {
         if (!this.messagesContainer) return;
-        // Efface le message par défaut avant d'ajouter un nouveau message
         if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Sélectionnez une discussion')) {
             this.messagesContainer.innerHTML = '';
         }
