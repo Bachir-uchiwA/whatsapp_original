@@ -1,7 +1,7 @@
 // JS principal pour la page chat
 console.log("chat.js chargé !");
 
-const API_BASE_URL = 'https://projet-json-server-4.onrender.com';
+const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
 async function apiRequest(endpoint, options = {}) {
     try {
@@ -256,9 +256,12 @@ class ModalSystem {
         this.currentView = null;
     }
 
-    showNewChatInPreview() {
+    async showNewChatInPreview() {
         if (!this.tempPreview) return;
         this.currentView = 'newChat';
+        this.loading('Chargement des contacts...');
+        const contacts = await getContacts();
+        this.hideLoading();
         const newChatHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
                 <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
@@ -285,6 +288,17 @@ class ModalSystem {
                     <div class="p-4 border-t-2 border-gray-700">
                         <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
                         <div class="mt-2">
+                            ${contacts.map(contact => `
+                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                    <div class="${contact.avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">${contact.avatar.initial}</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-white">${contact.name}</p>
+                                        <p class="text-gray-400 text-sm">${contact.phone}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
                             <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
                                     <span class="text-white font-bold">B</span>
@@ -292,15 +306,6 @@ class ModalSystem {
                                 <div>
                                     <p class="text-white">Bachir IIR 👀 (vous)</p>
                                     <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center mr-3">
-                                    <span class="text-white font-bold">S</span>
-                                </div>
-                                <div>
-                                    <p class="text-white">Salif Thiouné 😎 39</p>
-                                    <p class="text-gray-400 text-sm">+221 70 620 28 16</p>
                                 </div>
                             </div>
                         </div>
