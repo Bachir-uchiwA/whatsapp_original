@@ -447,7 +447,7 @@ class NavigationSystem {
 
 class ChatSystem {
     constructor() {
-        this.messagesContainer = document.querySelector('.flex-1 p-4 overflow-y-auto scrollbar-thin #messagesContainer');
+        this.messagesContainer = document.getElementById('messagesContainer'); // Cible uniquement l'élément principal
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.sendIcon = document.getElementById('sendIcon');
@@ -540,7 +540,7 @@ class ChatSystem {
         this.currentChatId = contactId;
         const contacts = await getContacts();
         this.currentContact = contacts.find(contact => contact.id === contactId);
-        if (this.currentContact) {
+        if (this.currentContact && this.messagesContainer) {
             const chatHeader = document.querySelector('.bg-gray-900 p-4 .text-white .font-semibold');
             const chatAvatar = document.querySelector('.bg-gray-900 p-4 img');
             if (chatHeader) chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
@@ -550,7 +550,7 @@ class ChatSystem {
     }
 
     async loadMessages() {
-        if (!this.currentChatId) return;
+        if (!this.currentChatId || !this.messagesContainer) return;
         try {
             const messages = await getMessages(this.currentChatId);
             this.messagesContainer.innerHTML = '';
@@ -576,7 +576,7 @@ class ChatSystem {
 
     handleSend() {
         const message = this.messageInput.value.trim();
-        if (!message || !this.currentChatId) return;
+        if (!message || !this.currentChatId || !this.messagesContainer) return;
         const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
         this.addMessage(messageData);
         this.messageInput.value = '';
