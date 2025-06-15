@@ -303,8 +303,8 @@ class ModalSystem {
                         <div class="mt-2">
                             ${contacts.map(contact => `
                                 <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                    <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
+                                    <div class="${contact.avatar?.color || 'bg-green-500'} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">${contact.avatar?.initial || contact.firstName.charAt(0).toUpperCase()}</span>
                                     </div>
                                     <div>
                                         <p class="text-white">${contact.fullName || `${contact.firstName} ${contact.lastName}`}</p>
@@ -499,8 +499,8 @@ class ChatSystem {
             if (contactsList) {
                 contactsList.innerHTML = contacts.map(contact => `
                     <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="${contact.avatar.color || 'bg-green-500'} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.avatar.initial || contact.firstName.charAt(0).toUpperCase()}</span>
+                        <div class="${contact.avatar?.color || 'bg-green-500'} w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold">${contact.avatar?.initial || contact.firstName.charAt(0).toUpperCase()}</span>
                         </div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center">
@@ -521,7 +521,7 @@ class ChatSystem {
     showDefaultView() {
         if (this.messagesContainer) {
             this.messagesContainer.innerHTML = `
-                <div class="flex-1 bg-gray-800 flex items-center justify-center">
+                <div class="flex-1 flex flex-col bg-gray-800 items-center justify-center w-full h-full">
                     <div class="text-center max-w-md">
                         <!-- WhatsApp Web Illustration -->
                         <div class="mb-8 relative">
@@ -609,7 +609,7 @@ class ChatSystem {
                 this.chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
             }
             if (this.chatAvatarInitial) {
-                this.chatAvatarInitial.textContent = this.currentContact.avatar.initial || this.currentContact.firstName.charAt(0).toUpperCase();
+                this.chatAvatarInitial.textContent = this.currentContact.avatar?.initial || this.currentContact.firstName.charAt(0).toUpperCase();
             }
             this.loadMessages();
         }
