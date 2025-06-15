@@ -456,6 +456,8 @@ class ChatSystem {
         this.emojiBtn = document.getElementById('emojiBtn');
         this.emojiPanel = document.getElementById('emojiPanel');
         this.attachBtn = document.getElementById('attachBtn');
+        this.chatHeader = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
+        this.chatAvatarInitial = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 #chatAvatarInitial');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
         this.currentChatId = null;
@@ -463,7 +465,7 @@ class ChatSystem {
         window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
-        this.showDefaultMessage();
+        this.showDefaultView();
     }
 
     setupEventListeners() {
@@ -497,8 +499,8 @@ class ChatSystem {
             if (contactsList) {
                 contactsList.innerHTML = contacts.map(contact => `
                     <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-white font-bold">${contact.firstName.charAt(0).toUpperCase()}</span>
+                        <div class="${contact.avatar.color || 'bg-green-500'} w-12 h-12 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-bold">${contact.avatar.initial || contact.firstName.charAt(0).toUpperCase()}</span>
                         </div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center">
@@ -516,11 +518,73 @@ class ChatSystem {
         }
     }
 
-    showDefaultMessage() {
+    showDefaultView() {
         if (this.messagesContainer) {
             this.messagesContainer.innerHTML = `
-                <div class="text-center text-gray-400 p-4">
-                    Sélectionnez une discussion pour commencer
+                <div class="flex-1 bg-gray-800 flex items-center justify-center">
+                    <div class="text-center max-w-md">
+                        <!-- WhatsApp Web Illustration -->
+                        <div class="mb-8 relative">
+                            <div class="relative mx-auto w-80 h-60">
+                                <!-- Grand nuage de fond -->
+                                <svg class="absolute left-0 top-8 z-0" width="320" height="120" viewBox="0 0 320 120" fill="none">
+                                    <ellipse cx="160" cy="60" rx="140" ry="55" fill="#23272b"/>
+                                </svg>
+                                <!-- Petits nuages décoratifs -->
+                                <svg class="absolute left-16 top-32 z-10" width="40" height="20" viewBox="0 0 40 20" fill="none">
+                                    <ellipse cx="20" cy="10" rx="18" ry="8" fill="#374151" opacity="0.7"/>
+                                </svg>
+                                <svg class="absolute left-32 top-20 z-10" width="30" height="14" viewBox="0 0 30 14" fill="none">
+                                    <ellipse cx="15" cy="7" rx="13" ry="6" fill="#374151" opacity="0.7"/>
+                                </svg>
+                                <svg class="absolute right-16 top-16 z-10" width="30" height="14" viewBox="0 0 30 14" fill="none">
+                                    <ellipse cx="15" cy="7" rx="13" ry="6" fill="#374151" opacity="0.7"/>
+                                </svg>
+                                <div class="absolute left-4 top-16 w-20 h-32 rounded-xl border-2 border-teal-200 bg-gray-900 shadow-lg z-20" style="transform: rotate(-10deg);">
+                                    <div class="w-full h-full flex flex-col items-center justify-center">
+                                        <!-- Caméra frontale -->
+                                        <div class="w-3 h-3 rounded-full border-2 border-gray-700 mt-2 mb-2"></div>
+                                        <!-- Signal barré + X -->
+                                        <div class="flex flex-col items-center mt-2">
+                                            <div class="flex space-x-0.5 mb-1">
+                                                <div class="w-1 h-2 bg-gray-500 rounded"></div>
+                                                <div class="w-1 h-3 bg-gray-500 rounded"></div>
+                                                <div class="w-1 h-4 bg-gray-500 rounded"></div>
+                                                <div class="w-1 h-5 bg-gray-500 rounded"></div>
+                                            </div>
+                                            <span class="text-red-400 text-lg font-bold -mt-2">×</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Laptop à droite, incliné -->
+                                <div class="absolute right-2 top-10 w-40 h-28 z-20" style="transform: rotate(3deg);">
+                                    <!-- Écran -->
+                                    <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
+                                        <div class="w-12 h-12 bg-emerald-400 rounded-full flex items-center justify-center">
+                                            <svg width="28" height="28" fill="none" viewBox="0 0 28 28">
+                                                <circle cx="14" cy="14" r="14" fill="#34d399"/>
+                                                <path d="M8 15.5l4 4 8-9" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <!-- Base -->
+                                    <div class="w-44 h-3 bg-teal-200 rounded-b-lg -mt-1 mx-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <h2 class="text-2xl font-light text-white mb-4">WhatsApp Web</h2>
+                        <p class="text-gray-300 text-sm leading-relaxed mb-2">
+                            Envoyez et recevez des messages sans avoir à garder votre téléphone connecté.
+                        </p>
+                        <p class="text-gray-300 text-sm leading-relaxed">
+                            Utilisez WhatsApp sur un maximum de 4 appareils et 1 téléphone, simultanément.
+                        </p>
+                        <!-- Privacy Notice -->
+                        <div class="flex items-center justify-center mt-8 text-gray-400 text-xs">
+                            <i class="fas fa-lock mr-2"></i>
+                            <span>Vos messages personnels sont chiffrés de bout en bout</span>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -541,27 +605,21 @@ class ChatSystem {
         const contacts = await getContacts();
         this.currentContact = contacts.find(contact => contact.id === contactId);
         if (this.currentContact && this.messagesContainer) {
-            const chatHeader = document.querySelector('.bg-gray-900.p-4 .flex.items-center.space-x-3 .text-white .font-semibold');
-            if (chatHeader) {
-                chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
-            } else {
-                console.error('Élément chatHeader non trouvé dans le DOM.');
+            if (this.chatHeader) {
+                this.chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
             }
-            const chatAvatar = document.querySelector('.bg-gray-900.p-4 img');
-            if (chatAvatar) {
-                chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
+            if (this.chatAvatarInitial) {
+                this.chatAvatarInitial.textContent = this.currentContact.avatar.initial || this.currentContact.firstName.charAt(0).toUpperCase();
             }
             this.loadMessages();
-        } else {
-            this.showDefaultMessage();
         }
     }
 
     async loadMessages() {
         if (!this.currentChatId || !this.messagesContainer) return;
         try {
-            const messages = await getMessages(this.currentChatId);
             this.messagesContainer.innerHTML = '';
+            const messages = await getMessages(this.currentChatId);
             if (messages.length === 0) {
                 this.messagesContainer.innerHTML = `
                     <div class="text-center text-gray-500 text-sm py-4">
@@ -575,6 +633,8 @@ class ChatSystem {
             } else {
                 messages.forEach(message => this.addMessage(message));
             }
+            this.messagesContainer.classList.remove('flex-1', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
+            this.messagesContainer.classList.add('flex', 'flex-col', 'space-y-4', 'p-4', 'overflow-y-auto', 'scrollbar-thin');
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
@@ -595,9 +655,6 @@ class ChatSystem {
 
     addMessage(messageData) {
         if (!this.messagesContainer) return;
-        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Sélectionnez une discussion')) {
-            this.messagesContainer.innerHTML = '';
-        }
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
