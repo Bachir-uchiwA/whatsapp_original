@@ -45,6 +45,7 @@ class ModalSystem {
         this.loadingModal = document.getElementById('loading-modal');
         this.toastContainer = document.getElementById('toastContainer');
         this.tempPreview = document.getElementById('tempPreview');
+        this.currentView = null;
         this.setupEventListeners();
     }
 
@@ -134,6 +135,7 @@ class ModalSystem {
 
     showNewContactFormInPreview() {
         if (!this.tempPreview) return;
+        this.currentView = 'newContact';
         const newContactHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
                 <div class="flex items-center mb-4">
@@ -164,7 +166,12 @@ class ModalSystem {
         this.tempPreview.innerHTML = newContactHTML;
         this.tempPreview.style.display = 'flex';
         const backBtn = this.tempPreview.querySelector('#newContactBack');
-        backBtn?.addEventListener('click', () => this.hideNewContactFormInPreview());
+        backBtn?.addEventListener('click', () => {
+            if (this.currentView === 'newContact' && this.tempPreview) {
+                this.hideNewContactFormInPreview();
+                this.showNewChatInPreview(); // Retour à la vue "Nouvelle discussion"
+            }
+        });
         const saveBtn = this.tempPreview.querySelector('#saveContactBtn');
         saveBtn?.addEventListener('click', () => {
             const firstName = document.getElementById('contactFirstName').value.trim();
@@ -186,6 +193,7 @@ class ModalSystem {
                 this.hideLoading();
                 this.success(`Contact ${contactData.name} ajouté avec succès !`);
                 this.hideNewContactFormInPreview();
+                this.showNewChatInPreview(); // Retour à la vue "Nouvelle discussion" après sauvegarde
                 this.showToast(`Nouveau contact : ${contactData.name}`, 'success');
             }).catch(error => { console.error('Erreur lors de l\'ajout du contact:', error); this.hideLoading(); this.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.'); });
         });
@@ -195,10 +203,12 @@ class ModalSystem {
         if (!this.tempPreview) return;
         this.tempPreview.style.display = 'none';
         this.tempPreview.innerHTML = '';
+        this.currentView = null;
     }
 
     showSettingsInPreview() {
         if (!this.tempPreview) return;
+        this.currentView = 'settings';
         const settingsHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 animate-slide-up">
                 <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
@@ -243,10 +253,12 @@ class ModalSystem {
         if (!this.tempPreview) return;
         this.tempPreview.style.display = 'none';
         this.tempPreview.innerHTML = '';
+        this.currentView = null;
     }
 
     showNewChatInPreview() {
         if (!this.tempPreview) return;
+        this.currentView = 'newChat';
         const newChatHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
                 <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
@@ -299,7 +311,13 @@ class ModalSystem {
         this.tempPreview.innerHTML = newChatHTML;
         this.tempPreview.style.display = 'flex';
         const closeBtn = this.tempPreview.querySelector('#closePreview');
-        closeBtn?.addEventListener('click', () => this.hideNewChatInPreview());
+        closeBtn?.addEventListener('click', () => {
+            if (this.currentView === 'newChat' && this.tempPreview) {
+                this.hideNewChatInPreview();
+                const navigationSystem = window.WhatsAppSystems?.navigationSystem;
+                navigationSystem?.showChats();
+            }
+        });
         const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
         newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
     }
@@ -308,6 +326,7 @@ class ModalSystem {
         if (!this.tempPreview) return;
         this.tempPreview.style.display = 'none';
         this.tempPreview.innerHTML = '';
+        this.currentView = null;
     }
 
     hideAllModals() {
