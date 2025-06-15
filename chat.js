@@ -44,6 +44,7 @@ class ModalSystem {
         this.confirmModal = document.getElementById('confirm-modal');
         this.loadingModal = document.getElementById('loading-modal');
         this.toastContainer = document.getElementById('toastContainer');
+        this.tempPreview = document.getElementById('tempPreview');
         this.setupEventListeners();
     }
 
@@ -115,9 +116,24 @@ class ModalSystem {
         setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('animate-fade-in', 'animate-fade-out'); }, 200);
     }
 
+    showToast(message, type = 'info') {
+        if (!this.toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `p-3 rounded-lg text-white shadow-lg animate-slide-down ${type === 'success' ? 'bg-green-600' : 'bg-blue-600'} max-w-xs`;
+        toast.innerHTML = `${message} <button class="ml-4 text-white hover:text-gray-200">×</button>`;
+        this.toastContainer.appendChild(toast);
+        setTimeout(() => this.removeToast(toast), 5000);
+        toast.querySelector('button')?.addEventListener('click', () => this.removeToast(toast));
+    }
+
+    removeToast(toast) {
+        if (!toast) return;
+        toast.classList.add('animate-slide-up');
+        setTimeout(() => toast.remove(), 300);
+    }
+
     showNewContactFormInPreview() {
-        const tempPreview = document.getElementById('tempPreview');
-        if (!tempPreview) return;
+        if (!this.tempPreview) return;
         const newContactHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
                 <div class="flex items-center mb-4">
@@ -145,11 +161,11 @@ class ModalSystem {
                 </div>
             </div>
         `;
-        tempPreview.innerHTML = newContactHTML;
-        tempPreview.style.display = 'flex';
-        const backBtn = tempPreview.querySelector('#newContactBack');
+        this.tempPreview.innerHTML = newContactHTML;
+        this.tempPreview.style.display = 'flex';
+        const backBtn = this.tempPreview.querySelector('#newContactBack');
         backBtn?.addEventListener('click', () => this.hideNewContactFormInPreview());
-        const saveBtn = tempPreview.querySelector('#saveContactBtn');
+        const saveBtn = this.tempPreview.querySelector('#saveContactBtn');
         saveBtn?.addEventListener('click', () => {
             const firstName = document.getElementById('contactFirstName').value.trim();
             const lastName = document.getElementById('contactLastName').value.trim();
@@ -176,32 +192,128 @@ class ModalSystem {
     }
 
     hideNewContactFormInPreview() {
-        const tempPreview = document.getElementById('tempPreview');
-        const sidebarChats = document.getElementById('sidebarChats');
-        const navigationSystem = window.WhatsAppSystems?.navigationSystem;
-        if (tempPreview && sidebarChats && navigationSystem) {
-            navigationSystem.animateTransition(() => {
-                tempPreview.style.display = 'none';
-                tempPreview.innerHTML = '';
-                sidebarChats.style.display = 'flex';
-            });
-        }
+        if (!this.tempPreview) return;
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
     }
 
-    showToast(message, type = 'info') {
-        if (!this.toastContainer) return;
-        const toast = document.createElement('div');
-        toast.className = `p-3 rounded-lg text-white shadow-lg animate-slide-down ${type === 'success' ? 'bg-green-600' : 'bg-blue-600'} max-w-xs`;
-        toast.innerHTML = `${message} <button class="ml-4 text-white hover:text-gray-200">&times;</button>`;
-        this.toastContainer.appendChild(toast);
-        setTimeout(() => this.removeToast(toast), 5000);
-        toast.querySelector('button')?.addEventListener('click', () => this.removeToast(toast));
+    showSettingsInPreview() {
+        if (!this.tempPreview) return;
+        const settingsHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 animate-slide-up">
+                <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
+                    <input type="text" placeholder="Rechercher dans les paramètres" class="w-3/4 bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 text-center hover:bg-gray-700">
+                </div>
+                <div class="flex flex-col items-center pt-8 pb-6 border-b border-gray-800 relative">
+                    <div class="relative group">
+                        <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-4 border-gray-700 shadow-lg group-hover:border-gray-600 transition-colors duration-200">
+                        <span class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-2 border-gray-900 rounded-full animate-pulse"></span>
+                    </div>
+                    <div class="mt-4 text-white font-bold text-xl flex items-center gap-2">Bachir_deV <span class="text-lg">💻❌🇸🇳🖤</span></div>
+                    <div class="text-green-400 text-xs font-semibold mt-1 flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-400 rounded-full inline-block animate-pulse"></span>
+                        En ligne
+                    </div>
+                    <div class="text-gray-400 text-xs mt-2 px-4 text-center">Salut ! J'utilise WhatsApp.</div>
+                </div>
+                <div class="flex-1 px-0 py-0 overflow-y-auto scrollbar-thin">
+                    <ul class="divide-y divide-gray-800">
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-shield text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Compte</div><div class="text-gray-500 text-xs">Notifications de sécurité, informations de compte</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-lock text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Confidentialité</div><div class="text-gray-500 text-xs">Contacts bloqués, messages éphémères</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-comments text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Discussions</div><div class="text-gray-500 text-xs">Thème, fond d'écran, paramètres des discussions</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-bell text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Notifications</div><div class="text-gray-500 text-xs">Notifications de messages</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-keyboard text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Raccourcis clavier</div><div class="text-gray-500 text-xs">Raccourcis pour naviguer plus rapidement</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-download text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Stockage et données</div><div class="text-gray-500 text-xs">Utilisation du réseau, téléchargement automatique</div></div></a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-question-circle text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Aide</div><div class="text-gray-500 text-xs">Centre d'aide, nous contacter, conditions d'utilisation</div></div></a></li>
+                        <li><a href="#" id="settingsLogout" class="flex items-center px-8 py-5 hover:bg-red-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-sign-out-alt text-red-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-red-300 font-medium group-hover:text-red-200 transition-colors duration-200">Se déconnecter</div><div class="text-gray-500 text-xs">Déconnexion de WhatsApp Web</div></div></a></li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        this.tempPreview.innerHTML = settingsHTML;
+        this.tempPreview.style.display = 'flex';
+        const logoutBtn = this.tempPreview.querySelector('#settingsLogout');
+        logoutBtn?.addEventListener('click', () => {
+            const chatSystem = window.WhatsAppSystems?.chatSystem;
+            chatSystem?.logout();
+        });
     }
 
-    removeToast(toast) {
-        if (!toast) return;
-        toast.classList.add('animate-slide-up');
-        setTimeout(() => toast.remove(), 300);
+    hideSettingsInPreview() {
+        if (!this.tempPreview) return;
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
+    }
+
+    showNewChatInPreview() {
+        if (!this.tempPreview) return;
+        const newChatHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
+                <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
+                    <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
+                    <button id="closePreview" class="text-white hover:text-gray-300">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-4">
+                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-users text-xl text-green-500 mr-3"></i>
+                            <span>Nouveau groupe</span>
+                        </button>
+                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
+                            <span>Nouveau contact</span>
+                        </button>
+                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
+                            <span>Nouvelle communauté</span>
+                        </button>
+                    </div>
+                    <div class="p-4 border-t-2 border-gray-700">
+                        <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
+                        <div class="mt-2">
+                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white font-bold">B</span>
+                                </div>
+                                <div>
+                                    <p class="text-white">Bachir IIR 👀 (vous)</p>
+                                    <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white font-bold">S</span>
+                                </div>
+                                <div>
+                                    <p class="text-white">Salif Thiouné 😎 39</p>
+                                    <p class="text-gray-400 text-sm">+221 70 620 28 16</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.tempPreview.innerHTML = newChatHTML;
+        this.tempPreview.style.display = 'flex';
+        const closeBtn = this.tempPreview.querySelector('#closePreview');
+        closeBtn?.addEventListener('click', () => this.hideNewChatInPreview());
+        const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
+        newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
+    }
+
+    hideNewChatInPreview() {
+        if (!this.tempPreview) return;
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
+    }
+
+    hideAllModals() {
+        this.hideModal();
+        this.hideConfirmModal();
+        this.hideLoadingModal();
     }
 
     success(message, title = 'Succès') { this.showModal(message, 'success'); }
@@ -216,9 +328,8 @@ class ModalSystem {
 class NavigationSystem {
     constructor() {
         this.sidebarChats = document.getElementById('sidebarChats');
-        this.sidebarSettings = document.getElementById('sidebarSettings');
         this.tempPreview = document.getElementById('tempPreview');
-        this.newChatPreview = document.getElementById('newChatPreview');
+        this.modalSystem = new ModalSystem();
         this.currentView = 'chats';
         this.setupEventListeners();
     }
@@ -227,23 +338,19 @@ class NavigationSystem {
         document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.showChats());
         document.getElementById('settingsIcon')?.addEventListener('click', () => this.showSettings());
         document.getElementById('menuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleContextMenu(); });
-        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showNewChatPreview());
-        document.getElementById('closePreview')?.addEventListener('click', () => this.hideNewChatPreview());
+        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showNewChat());
         document.addEventListener('click', () => this.hideContextMenu());
         document.getElementById('contextMenu')?.addEventListener('click', (e) => e.stopPropagation());
-        document.getElementById('newContactBtn')?.addEventListener('click', () => {
-            const modalSystem = window.WhatsAppSystems?.modalSystem;
-            modalSystem?.showNewContactFormInPreview();
-        });
     }
 
     showChats() {
         if (this.currentView === 'chats') return;
         this.animateTransition(() => {
-            this.sidebarSettings?.classList.add('hidden');
-            this.tempPreview?.classList.add('hidden');
-            this.newChatPreview?.classList.add('hidden');
-            this.sidebarChats?.classList.remove('hidden');
+            this.modalSystem.hideNewContactFormInPreview();
+            this.modalSystem.hideSettingsInPreview();
+            this.modalSystem.hideNewChatInPreview();
+            this.sidebarChats.style.display = 'flex';
+            this.tempPreview.style.display = 'none';
             this.currentView = 'chats';
         });
     }
@@ -251,31 +358,22 @@ class NavigationSystem {
     showSettings() {
         if (this.currentView === 'settings') return;
         this.animateTransition(() => {
-            this.sidebarChats?.classList.add('hidden');
-            this.tempPreview?.classList.add('hidden');
-            this.newChatPreview?.classList.add('hidden');
-            this.sidebarSettings?.classList.remove('hidden');
+            this.modalSystem.hideNewContactFormInPreview();
+            this.modalSystem.hideNewChatInPreview();
+            this.modalSystem.showSettingsInPreview();
+            this.sidebarChats.style.display = 'none';
             this.currentView = 'settings';
         });
     }
 
-    showNewChatPreview() {
+    showNewChat() {
         if (this.currentView === 'newChat') return;
         this.animateTransition(() => {
-            this.sidebarChats?.classList.add('hidden');
-            this.tempPreview?.classList.add('hidden');
-            this.sidebarSettings?.classList.add('hidden');
-            this.newChatPreview?.classList.remove('hidden');
+            this.modalSystem.hideNewContactFormInPreview();
+            this.modalSystem.hideSettingsInPreview();
+            this.modalSystem.showNewChatInPreview();
+            this.sidebarChats.style.display = 'none';
             this.currentView = 'newChat';
-        });
-    }
-
-    hideNewChatPreview() {
-        if (this.currentView !== 'newChat') return;
-        this.animateTransition(() => {
-            this.newChatPreview?.classList.add('hidden');
-            this.sidebarChats?.classList.remove('hidden');
-            this.currentView = 'chats';
         });
     }
 
@@ -300,7 +398,7 @@ class NavigationSystem {
     }
 
     animateTransition(callback) {
-        const elements = [this.sidebarChats, this.sidebarSettings, this.tempPreview, this.newChatPreview].filter(el => el);
+        const elements = [this.sidebarChats, this.tempPreview].filter(el => el);
         elements.forEach(el => el.classList.add('animate-fade-out'));
         setTimeout(() => {
             callback();
@@ -324,7 +422,7 @@ class ChatSystem {
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
         this.eventSource = new EventSource(`${API_BASE_URL}/events`);
-        window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem };
+        window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
         this.setupRealTimeUpdates();
@@ -344,8 +442,6 @@ class ChatSystem {
                 this.handleContextMenuAction(e.target.textContent);
             }
         });
-        document.getElementById('settingsLogout')?.addEventListener('click', () => this.logout());
-        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
     }
 
     async loadInitialData() {
