@@ -277,28 +277,25 @@ class ModalSystem {
         this.hideLoading();
         const newChatHTML = `
             <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
-                <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
-                    <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
+                <div class="flex items-center mb-4">
                     <button id="closePreview" class="text-white hover:text-gray-300">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <div class="p-4">
-                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-users text-xl text-green-500 mr-3"></i>
-                            <span>Nouveau groupe</span>
-                        </button>
-                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
-                            <span>Nouveau contact</span>
-                        </button>
-                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
-                            <span>Nouvelle communauté</span>
-                        </button>
-                    </div>
-                    <div class="p-4 border-t-2 border-gray-700">
+                <div class="flex-1 p-4 overflow-y-auto scrollbar-thin">
+                    <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                        <i class="fas fa-users text-xl text-green-500 mr-3"></i>
+                        <span>Nouveau groupe</span>
+                    </button>
+                    <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                        <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
+                        <span>Nouveau contact</span>
+                    </button>
+                    <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                        <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
+                        <span>Nouvelle communauté</span>
+                    </button>
+                    <div class="mt-4 border-t-2 border-gray-700">
                         <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
                         <div class="mt-2">
                             ${contacts.map(contact => `
@@ -622,7 +619,7 @@ class ChatSystem {
             const messages = await getMessages(this.currentChatId);
             if (messages.length === 0) {
                 this.messagesContainer.innerHTML = `
-                    <div class="flex flex-col space-y-4 w-full h-full">
+                    <div class="flex-1 p-4 overflow-y-auto scrollbar-thin">
                         <div class="text-center text-gray-500 text-sm py-4">
                             <div class="flex items-center justify-center gap-2">
                                 <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
@@ -634,7 +631,7 @@ class ChatSystem {
                 `;
             } else {
                 this.messagesContainer.innerHTML = `
-                    <div class="flex flex-col space-y-4 w-full h-full">
+                    <div class="flex-1 p-4 overflow-y-auto scrollbar-thin">
                         ${messages.map(message => `
                             <div class="p-3 rounded-lg max-w-[70%] ${message.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}">
                                 <div class="text-white">${message.content}</div>
@@ -645,7 +642,7 @@ class ChatSystem {
                 `;
             }
             this.messagesContainer.classList.remove('flex-1', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
-            this.messagesContainer.classList.add('flex', 'flex-col', 'space-y-4', 'p-4', 'overflow-y-auto', 'scrollbar-thin', 'w-full', 'h-full');
+            this.messagesContainer.classList.add('flex', 'flex-col', 'w-full', 'h-full');
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
