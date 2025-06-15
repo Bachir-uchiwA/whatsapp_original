@@ -281,56 +281,99 @@ class ModalSystem {
         }, 200);
     }
 
-    async loadContacts() {
-        try {
-            const contacts = await getContacts();
-            const contactsList = document.getElementById('contactsList');
-            
-            if (!contactsList) return;
-            
-            contactsList.innerHTML = '';
-            
-            if (contacts.length === 0) {
-                contactsList.innerHTML = '<p class="text-gray-400 text-center py-4">Aucun contact trouvé</p>';
+    showNewContactFormInPreview() {
+        const tempPreview = document.getElementById('tempPreview');
+        if (!tempPreview) return;
+
+        const newContactHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
+                <div class="flex items-center mb-4">
+                    <button id="newContactBack" class="text-gray-400 hover:text-white text-2xl mr-4">&larr;</button>
+                    <h2 class="text-white text-lg font-bold">Nouveau contact</h2>
+                </div>
+                <div class="flex-1 space-y-4 overflow-y-auto">
+                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
+                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
+                    <div class="flex items-center">
+                        <select id="contactCountryCode" class="w-24 p-2 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="+221">SN +221</option>
+                            <option value="+33">FR +33</option>
+                            <option value="+1">US +1</option>
+                            <option value="+44">UK +44</option>
+                        </select>
+                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="flex-1 p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="syncContact" class="w-5 h-5 text-green-500 bg-gray-800 rounded focus:ring-green-500 focus:ring-offset-gray-900">
+                        <label for="syncContact" class="text-gray-300 text-sm">Synchroniser le contact sur le téléphone</label>
+                    </div>
+                    <button id="saveContactBtn" class="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg font-medium mt-4">Enregistrer</button>
+                    <p class="text-gray-500 text-xs text-center">Ce contact sera ajouté au carnet d'adresses de votre téléphone.</p>
+                </div>
+            </div>
+        `;
+
+        tempPreview.innerHTML = newContactHTML;
+        tempPreview.style.display = 'flex';
+
+        // Gestion du bouton de retour
+        const backBtn = tempPreview.querySelector('#newContactBack');
+        backBtn?.addEventListener('click', () => {
+            this.hideNewContactFormInPreview();
+        });
+
+        // Gestion du bouton d'enregistrement
+        const saveBtn = tempPreview.querySelector('#saveContactBtn');
+        saveBtn?.addEventListener('click', () => {
+            const firstName = document.getElementById('contactFirstName').value.trim();
+            const lastName = document.getElementById('contactLastName').value.trim();
+            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
+            const sync = document.getElementById('syncContact').checked;
+
+            if (!firstName || !lastName || !phone) {
+                window.WhatsAppSystems.modalSystem.warning('Veuillez remplir tous les champs obligatoires.');
                 return;
             }
-            
-            contacts.forEach(contact => {
-                const contactEl = document.createElement('div');
-                contactEl.className = 'flex items-center p-3 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors duration-200';
-                contactEl.innerHTML = `
-                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white font-bold">${contact.name.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-white font-medium">${contact.name}</div>
-                        <div class="text-gray-400 text-sm">${contact.phone}</div>
-                    </div>
-                `;
-                
-                contactEl.addEventListener('click', () => {
-                    this.startChatWithContact(contact);
+            const phoneRegex = /^[\+]?[0-9]{10,}$/;
+            if (!phoneRegex.test(phone)) {
+                window.WhatsAppSystems.modalSystem.warning('Veuillez entrer un numéro de téléphone valide.');
+                return;
+            }
+            const contactData = {
+                id: Date.now(),
+                name: `${firstName} ${lastName}`,
+                phone: phone,
+                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
+                createdAt: new Date().toISOString()
+            };
+            window.WhatsAppSystems.modalSystem.loading('Ajout du contact...');
+            saveContact(contactData)
+                .then(() => {
+                    window.WhatsAppSystems.modalSystem.hideLoading();
+                    window.WhatsAppSystems.modalSystem.success(`Contact ${contactData.name} ajouté avec succès !`);
+                    this.hideNewContactFormInPreview();
+                    window.WhatsAppSystems.modalSystem.loadContacts();
+                })
+                .catch(error => {
+                    console.error('Erreur lors de l\'ajout du contact:', error);
+                    window.WhatsAppSystems.modalSystem.hideLoading();
+                    window.WhatsAppSystems.modalSystem.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.');
                 });
-                
-                contactsList.appendChild(contactEl);
+        });
+    }
+
+    hideNewContactFormInPreview() {
+        const tempPreview = document.getElementById('tempPreview');
+        const sidebarChats = document.getElementById('sidebarChats');
+        const navigationSystem = window.WhatsAppSystems.navigationSystem;
+
+        if (tempPreview && sidebarChats) {
+            navigationSystem.animateTransition(() => {
+                tempPreview.style.display = 'none';
+                tempPreview.innerHTML = '';
+                sidebarChats.style.display = 'flex';
             });
-        } catch (error) {
-            console.error('Erreur lors du chargement des contacts:', error);
-            this.showModal('Erreur lors du chargement des contacts', 'error');
         }
-    }
-
-    startChatWithContact(contact) {
-        console.log('Démarrage du chat avec:', contact);
-        this.hideNewChatModal();
-        this.showModal(`Chat démarré avec ${contact.name}`, 'success');
-    }
-
-    hideAllModals() {
-        this.hideModal();
-        this.hideConfirmModal();
-        this.hideLoadingModal();
-        this.hideNewChatModal();
     }
 
     // Méthodes raccourcies pour faciliter l'utilisation
