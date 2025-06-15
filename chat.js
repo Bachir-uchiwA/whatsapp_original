@@ -546,6 +546,8 @@ class ChatSystem {
             if (chatHeader) chatHeader.textContent = this.currentContact.fullName || `${this.currentContact.firstName} ${this.currentContact.lastName}`;
             if (chatAvatar) chatAvatar.src = `https://randomuser.me/api/portraits/${this.currentContact.id % 2 === 0 ? 'men' : 'women'}/${parseInt(this.currentContact.id) % 10 + 1}.jpg`;
             this.loadMessages();
+        } else {
+            this.showDefaultMessage();
         }
     }
 
