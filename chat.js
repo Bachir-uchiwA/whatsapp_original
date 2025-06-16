@@ -42,7 +42,7 @@ style.textContent = `
         font-size: 0.75rem;
         color: #a0aec0;
     }
-    .voice-message {
+    .voice-message, .audio-message {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -68,6 +68,9 @@ style.textContent = `
     .emoji-btn:hover {
         background: #4a5568;
         border-radius: 4px;
+    }
+    .audio-player {
+        width: 200px;
     }
 `;
 document.head.appendChild(style);
@@ -119,6 +122,12 @@ class ApiManager {
         return await this.request(`/messages/${messageId}`, {
             method: 'PATCH',
             body: JSON.stringify({ status })
+        });
+    }
+
+    static async deleteSession() {
+        return await this.request('/sessions/1', {
+            method: 'DELETE'
         });
     }
 }
@@ -301,8 +310,9 @@ class MessageManager {
             case 'text':
                 return `<div class="break-words">${message.content}</div>`;
             case 'voice':
+            case 'audio':
                 return `
-                    <div class="voice-message">
+                    <div class="${message.type}-message">
                         <button class="play-btn w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white" data-message-id="${message.id}" data-playing="false">
                             <i class="fas fa-play text-xs"></i>
                         </button>
@@ -330,11 +340,11 @@ class MessageManager {
         return `${min}:${sec.toString().padStart(2, '0')}`;
     }
 
-    async playVoiceMessage(messageId) {
+    async playAudioMessage(messageId) {
         try {
             const messages = await ApiManager.getMessages(this.currentChatId);
             const message = messages.find(m => m.id === messageId);
-            if (!message || !message.audioUrl) throw new Error('Audio non trouvé');
+            if (!message || !message.audioData) throw new Error('Audio non trouvé');
 
             const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
             const playBtn = messageElement.querySelector('.play-btn');
@@ -355,7 +365,7 @@ class MessageManager {
             if (!audio) {
                 audio = document.createElement('audio');
                 audio.id = `audio-${messageId}`;
-                audio.src = message.audioUrl;
+                audio.src = message.audioData;
                 audio.style.display = 'none';
                 messageElement.appendChild(audio);
             }
@@ -370,7 +380,7 @@ class MessageManager {
             };
         } catch (error) {
             console.error('Erreur de lecture:', error);
-            chatSystem.showToast('Impossible de lire le message vocal', 'error');
+            chatSystem.showToast('Impossible de lire le message audio', 'error');
         }
     }
 }
@@ -561,8 +571,8 @@ class ChatSystem {
         const logoutBtn = document.getElementById('logoutBtn');
         const settingsLogout = document.getElementById('settingsLogout');
         const newContactBtn = document.getElementById('newContactBtn');
-        const newContactSave = document.getElementById('new-contact-save');
-        const newContactCancel = document.getElementById('new-contact-cancel');
+        const newContactSave = document.getElementById('newContactSave');
+        const newContactCancel = document.getElementById('newContactCancel');
 
         if (sidebarChatIcon) {
             sidebarChatIcon.addEventListener('click', () => this.showChats());
@@ -634,6 +644,9 @@ class ChatSystem {
         const recordBtn = document.getElementById('recordBtn');
         const emojiBtn = document.getElementById('emojiBtn');
         const charCount = document.getElementById('charCount');
+        const attachBtn = document.getElementById('attachBtn');
+        const audioInput = document.getElementById('audioInput');
+        const cancelRecording = document.getElementById('cancelRecording');
 
         if (messageInput) {
             messageInput.addEventListener('input', (e) => {
@@ -659,12 +672,24 @@ class ChatSystem {
             recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.stopRecording(); });
         }
 
+        if (attachBtn) {
+            attachBtn.addEventListener('click', () => audioInput.click());
+        }
+
+        if (audioInput) {
+            audioInput.addEventListener('change', (e) => this.handleAudioUpload(e.target.files[0]));
+        }
+
+        if (cancelRecording) {
+            cancelRecording.addEventListener('click', () => this.cancelRecording());
+        }
+
         const messagesContainer = document.getElementById('messagesContainer');
         if (messagesContainer) {
             messagesContainer.addEventListener('click', (e) => {
                 const playBtn = e.target.closest('.play-btn');
                 if (playBtn) {
-                    this.messageManager.playVoiceMessage(playBtn.dataset.messageId);
+                    this.messageManager.playAudioMessage(playBtn.dataset.messageId);
                 }
             });
         }
@@ -722,7 +747,7 @@ class ChatSystem {
 
             this.mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioData = await this.blobToBase64(audioBlob);
                 const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
 
                 const messageData = {
@@ -730,7 +755,7 @@ class ChatSystem {
                     chatId: this.currentChatId,
                     sender: 'me',
                     type: 'voice',
-                    audioUrl: audioUrl,
+                    audioData: audioData,
                     audioDuration: duration,
                     timestamp: new Date().toISOString(),
                     status: 'sending'
@@ -739,11 +764,7 @@ class ChatSystem {
                 this.addMessageToInterface(messageData);
 
                 try {
-                    // Simulate saving audio to server (in practice, upload audioBlob to a storage service)
-                    await ApiManager.saveMessage({
-                        ...messageData,
-                        audioUrl: 'mock-audio-url.webm' // Placeholder for actual URL
-                    });
+                    await ApiManager.saveMessage(messageData);
                     this.updateMessageStatus(messageData.id, 'sent');
                     setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
                     setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
@@ -790,185 +811,43 @@ class ChatSystem {
         this.isRecording = false;
     }
 
-    startPolling() {
-        this.stopPolling();
-        this.pollingInterval = setInterval(async () => {
+    cancelRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+
+        this.mediaRecorder.stop();
+        clearInterval(this.recordingTimer);
+        this.isRecording = false;
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        if (recordingIndicator) recordingIndicator.classList.add('hidden');
+        this.audioChunks = [];
+        this.showToast('Enregistrement annulé', 'info');
+    }
+
+    async handleAudioUpload(file) {
+        if (!file || !this.currentChatId) return;
+
+        try {
+            const audioData = await this.blobToBase64(file);
+            const audio = new Audio(audioData);
+            const duration = await new Promise((resolve) => {
+                audio.onloadedmetadata = () => resolve(Math.floor(audio.duration));
+            });
+
+            const messageData = {
+                id: Date.now().toString(),
+                chatId: this.currentChatId,
+                sender: 'me',
+                type: 'audio',
+                audioData: audioData,
+                audioDuration: duration,
+                timestamp: new Date().toISOString(),
+                status: 'sending'
+            };
+
+            this.addMessageToInterface(messageData);
+
             try {
-                await this.loadMessages();
-            } catch (error) {
-                console.error('Erreur polling:', error);
-            }
-        }, 60000); // Poll every 60 seconds
-    }
-
-    stopPolling() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-        }
-    }
-
-    showDefaultView() {
-        const chatArea = document.getElementById('chatArea');
-        if (chatArea) {
-            chatArea.innerHTML = `
-                <div class="flex-1 flex flex-col items-center justify-center bg-gray-800 text-gray-400">
-                    <i class="fas fa-comment-dots text-6xl mb-4"></i>
-                    <h2 class="text-xl font-semibold">Sélectionnez une discussion</h2>
-                    <p class="text-sm mt-2">Choisissez un contact pour commencer à discuter.</p>
-                </div>
-            `;
-        }
-    }
-
-    showChats() {
-        document.getElementById('sidebarChats').classList.remove('hidden');
-        document.getElementById('sidebarSettings').classList.add('hidden');
-        document.getElementById('newChatPreview').classList.add('hidden');
-        document.getElementById('tempPreview').classList.add('hidden');
-    }
-
-    showSettings() {
-        document.getElementById('sidebarChats').classList.add('hidden');
-        document.getElementById('sidebarSettings').classList.remove('hidden');
-        document.getElementById('newChatPreview').classList.add('hidden');
-        document.getElementById('tempPreview').classList.add('hidden');
-    }
-
-    showNewChatPreview() {
-        document.getElementById('sidebarChats').classList.add('hidden');
-        document.getElementById('newChatPreview').classList.remove('hidden');
-        document.getElementById('sidebarSettings').classList.add('hidden');
-        document.getElementById('tempPreview').classList.add('hidden');
-    }
-
-    hideNewChatPreview() {
-        document.getElementById('newChatPreview').classList.add('hidden');
-        document.getElementById('sidebarChats').classList.remove('hidden');
-    }
-
-    showNewContactModal() {
-        const modal = document.getElementById('new-contact-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            document.getElementById('newContactName').value = '';
-            document.getElementById('newContactPhone').value = '';
-        }
-    }
-
-    async saveNewContact() {
-        const nameInput = document.getElementById('newContactName');
-        const phoneInput = document.getElementById('newContactPhone');
-        if (!nameInput.value.trim() || !phoneInput.value.trim()) {
-            this.showToast('Veuillez remplir tous les champs', 'error');
-            return;
-        }
-
-        const contactData = {
-            id: Date.now().toString(),
-            fullName: nameInput.value.trim(),
-            phone: phoneInput.value.trim(),
-            status: 'offline'
-        };
-
-        try {
-            await ApiManager.addContact(contactData);
-            this.hideModal('new-contact-modal');
-            await this.loadContacts();
-            this.showToast('Contact ajouté avec succès', 'info');
-        } catch (error) {
-            console.error('Erreur ajout contact:', error);
-            this.showToast('Erreur lors de l\'ajout du contact', 'error');
-        }
-    }
-
-    toggleContextMenu(event) {
-        const contextMenu = document.getElementById('contextMenu');
-        if (contextMenu.classList.contains('hidden')) {
-            contextMenu.classList.remove('hidden');
-            contextMenu.style.left = `${event.clientX}px`;
-            contextMenu.style.top = `${event.clientY}px`;
-        } else {
-            contextMenu.classList.add('hidden');
-        }
-    }
-
-    async filterContacts(query) {
-        try {
-            const contacts = await ApiManager.getContacts();
-            const filtered = contacts.filter(contact =>
-                (contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`).toLowerCase().includes(query.toLowerCase()) ||
-                (contact.phone || '').includes(query)
-            );
-            this.renderContactsList(filtered);
-        } catch (error) {
-            console.error('Erreur filtrage contacts:', error);
-            this.showToast('Erreur lors du filtrage des contacts', 'error');
-        }
-    }
-
-    showModal(message, iconClass = 'fas fa-info-circle text-blue-400') {
-        const modal = document.getElementById('modal');
-        const modalMessage = document.getElementById('modal-message');
-        const modalIcon = document.getElementById('modal-icon');
-        if (modal && modalMessage && modalIcon) {
-            modalMessage.textContent = message;
-            modalIcon.innerHTML = `<i class="${iconClass}"></i>`;
-            modal.classList.remove('hidden');
-        }
-    }
-
-    showConfirmModal(title, message, onConfirm) {
-        const modal = document.getElementById('confirm-modal');
-        const confirmTitle = document.getElementById('confirm-title');
-        const confirmMessage = document.getElementById('confirm-message');
-        if (modal && confirmTitle && confirmMessage) {
-            confirmTitle.textContent = title;
-            confirmMessage.textContent = message;
-            this.confirmCallback = onConfirm;
-            modal.classList.remove('hidden');
-        }
-    }
-
-    hideModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('hidden');
-    }
-
-    handleConfirm() {
-        if (this.confirmCallback) {
-            this.confirmCallback();
-            this.confirmCallback = null;
-        }
-        this.hideModal('confirm-modal');
-    }
-
-    showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toastContainer');
-        if (!toastContainer) return;
-
-        const toast = document.createElement('div');
-        const bgColor = type === 'error' ? 'bg-red-600' : 'bg-green-600';
-        toast.className = `bg-opacity-90 ${bgColor} text-white rounded-lg px-4 py-2 shadow-lg animate-pulse`;
-        toast.textContent = message;
-        toastContainer.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('animate-out');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    logout() {
-        this.showToast('Déconnexion réussie', 'info');
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
-    }
-}
-
-// Initialisation
-let chatSystem;
-document.addEventListener('DOMContentLoaded', () => {
-    chatSystem = new ChatSystem();
-});
+                await ApiManager.saveMessage(messageData);
+                this.updateMessageStatus(messageData.id, 'sent');
+                setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+                setTimeout
