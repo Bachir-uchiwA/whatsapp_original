@@ -56,7 +56,7 @@ class ModalSystem {
         this.modal = document.getElementById('modal');
         this.confirmModal = document.getElementById('confirm-modal');
         this.loadingModal = document.getElementById('loading-modal');
-        this.tempPreview = document.getElementById('tempPreview');
+        this.previewPanel = document.getElementById('previewPanel');
         this.currentView = null;
         this.setupEventListeners();
     }
@@ -144,17 +144,178 @@ class ModalSystem {
         this.hideModal();
         this.hideConfirmModal();
         this.hideLoadingModal();
-        this.hideNewContactFormInPreview();
-        this.hideNewChatInPreview();
-        this.hideSettingsInPreview();
+        window.WhatsAppSystems.navigationSystem.hidePreview();
+    }
+}
+
+class NavigationSystem {
+    constructor(modalSystem, chatSystem) {
+        this.modalSystem = modalSystem;
+        this.chatSystem = chatSystem;
+        this.views = {
+            sidebarChats: document.getElementById('sidebarChats'),
+            chatArea: document.getElementById('chatArea'),
+            sidebarSettings: document.getElementById('sidebarSettings'),
+            previewPanel: document.getElementById('previewPanel')
+        };
+        this.navigationStack = ['sidebarChats'];
+        this.currentPreviewView = null;
+        this.setupEventListeners();
     }
 
-    showNewContactFormInPreview() {
-        this.currentView = 'newContact';
-        const newContactHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4 animate-slide-up">
+    setupEventListeners() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && this.navigationStack.length > 1) {
+                this.goBack();
+            }
+        });
+        document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.navigateTo('sidebarChats'));
+        document.getElementById('settingsIcon')?.addEventListener('click', () => this.navigateTo('sidebarSettings'));
+        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showPreview('newChat'));
+        document.getElementById('menuBtn')?.addEventListener('click', () => this.toggleContextMenu());
+        document.getElementById('logoutBtn')?.addEventListener('click', () => this.chatSystem.logout());
+        document.getElementById('settingsLogout')?.addEventListener('click', () => this.chatSystem.logout());
+        document.addEventListener('click', (e) => {
+            const contextMenu = document.getElementById('contextMenu');
+            if (!contextMenu.contains(e.target) && !document.getElementById('menuBtn').contains(e.target)) {
+                contextMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    navigateTo(view, options = {}) {
+        Object.values(this.views).forEach(v => v.classList.add('hidden'));
+        this.views[view].classList.remove('hidden');
+        this.views[view].classList.add('animate-slide-up');
+
+        if (view !== this.navigationStack[this.navigationStack.length - 1]) {
+            this.navigationStack.push(view);
+        }
+
+        if (view === 'sidebarChats') {
+            this.chatSystem.loadContacts();
+            this.hidePreview();
+        } else if (view === 'sidebarSettings') {
+            this.hidePreview();
+        } else if (view === 'chatArea' && options.contactId) {
+            this.chatSystem.selectContact(options.contactId);
+        }
+    }
+
+    showPreview(previewType, data = {}) {
+        this.currentPreviewView = previewType;
+        this.views.previewPanel.classList.remove('hidden');
+        this.views.previewPanel.classList.add('animate-slide-up');
+        this.views.sidebarChats.classList.add('hidden');
+
+        if (!this.navigationStack.includes('previewPanel')) {
+            this.navigationStack.push('previewPanel');
+        }
+
+        switch (previewType) {
+            case 'newChat':
+                this.renderNewChatPreview();
+                break;
+            case 'newContact':
+                this.renderNewContactPreview();
+                break;
+            case 'settings':
+                this.renderSettingsPreview();
+                break;
+        }
+    }
+
+    hidePreview() {
+        this.views.previewPanel.classList.add('animate-slide-down');
+        setTimeout(() => {
+            this.views.previewPanel.classList.add('hidden');
+            this.views.previewPanel.innerHTML = '';
+            this.views.previewPanel.classList.remove('animate-slide-down');
+            this.currentPreviewView = null;
+            if (this.navigationStack[this.navigationStack.length - 1] === 'sidebarChats') {
+                this.views.sidebarChats.classList.remove('hidden');
+                this.views.sidebarChats.classList.add('animate-slide-up');
+            }
+        }, 300);
+    }
+
+    goBack() {
+        if (this.navigationStack.length <= 1) return;
+
+        const currentView = this.navigationStack.pop();
+        const previousView = this.navigationStack[this.navigationStack.length - 1];
+
+        if (currentView === 'previewPanel') {
+            if (this.currentPreviewView === 'newContact') {
+                this.showPreview('newChat');
+            } else {
+                this.hidePreview();
+            }
+        } else {
+            this.views[currentView].classList.add('animate-slide-down');
+            setTimeout(() => {
+                this.views[currentView].classList.add('hidden');
+                this.views[currentView].classList.remove('animate-slide-down');
+                this.navigateTo(previousView);
+            }, 300);
+        }
+    }
+
+    toggleContextMenu() {
+        const contextMenu = document.getElementById('contextMenu');
+        contextMenu.classList.toggle('hidden');
+    }
+
+    renderNewChatPreview() {
+        this.modalSystem.showLoadingModal('Chargement des contacts...');
+        getContacts().then(contacts => {
+            this.modalSystem.hideLoadingModal();
+            this.views.previewPanel.innerHTML = `
+                <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <button id="backBtn" class="text-gray-400 hover:text-white text-2xl" aria-label="Retour">←</button>
+                        <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
+                        <button id="closePreviewBtn" class="text-gray-400 hover:text-white" aria-label="Fermer">×</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
+                            <span>Nouveau contact</span>
+                        </button>
+                        ${contacts.map(c => `
+                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer contact-item" data-contact-id="${c.id}">
+                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white">${c.fullName.charAt(0)}</span>
+                                </div>
+                                <div>
+                                    <p class="text-white">${c.fullName}</p>
+                                    <p class="text-gray-400 text-sm">${c.phone}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('backBtn')?.addEventListener('click', () => this.goBack());
+            document.getElementById('closePreviewBtn')?.addEventListener('click', () => this.hidePreview());
+            document.getElementById('newContactBtn')?.addEventListener('click', () => this.showPreview('newContact'));
+            document.querySelectorAll('.contact-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    this.hidePreview();
+                    this.navigateTo('chatArea', { contactId: item.dataset.contactId });
+                });
+            });
+        }).catch(() => {
+            this.modalSystem.hideLoadingModal();
+            this.modalSystem.showModal('Erreur de chargement des contacts.', 'error');
+        });
+    }
+
+    renderNewContactPreview() {
+        this.views.previewPanel.innerHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
                 <div class="flex items-center mb-4">
-                    <button id="newContactBack" class="text-gray-400 hover:text-white text-2xl mr-4">←</button>
+                    <button id="backBtn" class="text-gray-400 hover:text-white text-2xl mr-4" aria-label="Retour">←</button>
                     <h2 class="text-white text-lg font-semibold">Nouveau contact</h2>
                 </div>
                 <div class="flex-1 space-y-4 overflow-y-auto">
@@ -178,26 +339,19 @@ class ModalSystem {
                 </div>
             </div>
         `;
-        this.tempPreview.innerHTML = newContactHTML;
-        this.tempPreview.style.display = 'flex';
-        document.getElementById('newContactBack')?.addEventListener('click', () => {
-            if (this.currentView === 'newContact') {
-                this.hideNewContactFormInPreview();
-                this.showNewChatInPreview();
-            }
-        });
+        document.getElementById('backBtn')?.addEventListener('click', () => this.showPreview('newChat'));
         document.getElementById('saveContactBtn')?.addEventListener('click', async () => {
             const firstName = document.getElementById('contactFirstName').value.trim();
             const lastName = document.getElementById('contactLastName').value.trim();
             const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
             const sync = document.getElementById('syncContact').checked;
             if (!firstName || !lastName || !phone) {
-                this.showModal('Veuillez remplir tous les champs.', 'warning');
+                this.modalSystem.showModal('Veuillez remplir tous les champs.', 'warning');
                 return;
             }
             const phoneRegex = /^[\+]?[0-9]+$/;
             if (!phoneRegex.test(phone)) {
-                this.showModal('Numéro de téléphone invalide.', 'warning');
+                this.modalSystem.showModal('Numéro de téléphone invalide.', 'warning');
                 return;
             }
             const contactData = {
@@ -210,33 +364,26 @@ class ModalSystem {
                 avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
                 createdAt: new Date().toISOString()
             };
-            this.showLoadingModal('Ajout de contact...');
+            this.modalSystem.showLoadingModal('Ajout de contact...');
             try {
                 await saveContact(contactData);
-                this.hideLoadingModal();
-                this.showModal('Contact ajouté avec succès !', 'success');
-                this.hideNewContactFormInPreview();
-                this.showNewChatInPreview();
-                await window.WhatsAppSystems?.chatSystem?.updateContactsList();
+                this.modalSystem.hideLoadingModal();
+                this.modalSystem.showModal('Contact ajouté avec succès !', 'success');
+                this.showPreview('newChat');
+                await this.chatSystem.updateContactsList();
             } catch (error) {
-                this.hideLoadingModal();
-                this.showModal('Erreur lors de l\'ajout du contact.', 'error');
+                this.modalSystem.hideLoadingModal();
+                this.modalSystem.showModal('Erreur lors de l\'ajout du contact.', 'error');
             }
         });
     }
 
-    hideNewContactFormInPreview() {
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
-    }
-
-    showSettingsInPreview() {
-        this.currentView = 'settings';
-        const settingsHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col animate-slide-up">
-                <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
-                    <input type="text" placeholder="Rechercher dans les paramètres" class="w-3/4 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none">
+    renderSettingsPreview() {
+        this.views.previewPanel.innerHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
+                <div class="flex items-center mb-4">
+                    <button id="backBtn" class="text-gray-400 hover:text-white text-2xl mr-4" aria-label="Retour">←</button>
+                    <h2 class="text-white text-lg font-semibold">Paramètres</h2>
                 </div>
                 <div class="flex flex-col items-center py-6 border-b border-gray-800">
                     <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-2 border-gray-700">
@@ -244,61 +391,19 @@ class ModalSystem {
                     <p class="text-gray-400 text-xs mt-2">Salut ! J'utilise WhatsApp.</p>
                 </div>
                 <div class="flex-1 overflow-y-auto">
-                    <ul>
-                        <li><a href="#" class="block p-4">Compte</a></li>
-                        <li><a href="#" class="block p-4">Confidentialité</a></li>
-                        <li><a href="#" class="block p-4">Chats</a></li>
-                        <li><a href="#" class="block p-4">Notifications</a></li>
-                        <li><a href="#" class="block p-4">Aide</a></li>
-                        <li><a href="#" id="settingsLogoutBtn" class="block p-4 text-red-500">Déconnexion</a></li>
+                    <ul class="divide-y divide-gray-800">
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Compte</a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Confidentialité</a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Discussions</a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Notifications</a></li>
+                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Aide</a></li>
+                        <li><a href="#" id="settingsLogoutBtn" class="flex items-center px-8 py-5 hover:bg-red-800 text-red-500">Déconnexion</a></li>
                     </ul>
                 </div>
             </div>
         `;
-        this.tempPreview.innerHTML = settingsHTML;
-        this.tempPreview.style.display = 'flex';
-        document.getElementById('settingsLogoutBtn')?.addEventListener('click', () => {
-            window.WhatsAppSystems?.chatSystem?.logout();
-        });
-    }
-
-    hideSettingsInPreview() {
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
-    }
-
-    showNewChatInPreview() {
-        this.currentView = 'newChat';
-        this.showLoadingModal('Chargement des contacts...');
-        getContacts().then(contacts => {
-            this.hideLoadingModal();
-            const newChatHTML = `
-                <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4 animate-slide-up">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-white text-lg">Nouvelle discussion</h2>
-                        <button id="closePreviewBtn" class="text-gray-400 hover:text-white">×</button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto">
-                        <button id="newContactBtn" class="block p-2">Nouveau contact</button>
-                        ${contacts.map(c => `<div class="p-2">${c.fullName}</div>`).join('')}
-                    </div>
-                </div>
-            `;
-            this.tempPreview.innerHTML = newChatHTML;
-            this.tempPreview.style.display = 'flex';
-            document.getElementById('closePreviewBtn')?.addEventListener('click', () => this.hideNewChatInPreview());
-            document.getElementById('newContactBtn')?.addEventListener('click', () => this.showNewContactFormInPreview());
-        }).catch(() => {
-            this.hideLoadingModal();
-            this.showModal('Erreur de chargement des contacts.', 'error');
-        });
-    }
-
-    hideNewChatInPreview() {
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
+        document.getElementById('backBtn')?.addEventListener('click', () => this.goBack());
+        document.getElementById('settingsLogoutBtn')?.addEventListener('click', () => this.chatSystem.logout());
     }
 }
 
@@ -333,19 +438,12 @@ class ChatSystem {
         this.searchBtn?.addEventListener('click', () => this.toggleSearch());
         this.optionsBtn?.addEventListener('click', () => this.toggleOptionsMenu());
         this.searchInput?.addEventListener('input', () => this.handleSearch());
-        document.getElementById('newChatBtn')?.addEventListener('click', () => this.modalSystem.showNewChatInPreview());
-        document.getElementById('menuBtn')?.addEventListener('click', () => this.toggleContextMenu());
-        document.getElementById('settingsIcon')?.addEventListener('click', () => this.modalSystem.showSettingsInPreview());
-        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
-        document.getElementById('settingsLogout')?.addEventListener('click', () => this.logout());
         document.addEventListener('click', (e) => {
             if (!this.optionsMenu.contains(e.target) && !this.optionsBtn.contains(e.target)) {
                 this.optionsMenu.classList.add('hidden');
             }
-            if (!document.getElementById('contextMenu').contains(e.target) && !document.getElementById('menuBtn').contains(e.target)) {
-                this.hideContextMenu();
-            }
         });
+        document.getElementById('contactSearch')?.addEventListener('input', (e) => this.filterContacts(e.target.value));
     }
 
     toggleSearch() {
@@ -371,13 +469,13 @@ class ChatSystem {
         this.optionsMenu.classList.toggle('hidden');
     }
 
-    toggleContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.classList.toggle('hidden');
-    }
-
-    hideContextMenu() {
-        document.getElementById('contextMenu').classList.add('hidden');
+    filterContacts(query) {
+        const contacts = document.querySelectorAll('#contactsList .contact-item');
+        contacts.forEach(contact => {
+            const name = contact.querySelector('p.text-white')?.textContent.toLowerCase() || '';
+            const phone = contact.querySelector('p.text-gray-500')?.textContent.toLowerCase() || '';
+            contact.style.display = name.includes(query.toLowerCase()) || phone.includes(query.toLowerCase()) ? '' : 'none';
+        });
     }
 
     async updateContactsList() {
@@ -386,6 +484,7 @@ class ChatSystem {
 
     async loadContacts() {
         try {
+            this.modalSystem.showLoadingModal('Chargement des contacts...');
             const contacts = await getContacts();
             const contactsList = document.getElementById('contactsList');
             contactsList.innerHTML = contacts.map(contact => `
@@ -402,7 +501,9 @@ class ChatSystem {
             contactsList.querySelectorAll('.contact-item').forEach(item => {
                 item.addEventListener('click', () => this.selectContact(item.dataset.contactId));
             });
+            this.modalSystem.hideLoadingModal();
         } catch (error) {
+            this.modalSystem.hideLoadingModal();
             this.modalSystem.showModal('Erreur de chargement des contacts.', 'error');
         }
     }
@@ -414,6 +515,7 @@ class ChatSystem {
         document.getElementById('chatContactName').textContent = this.currentContact?.fullName || 'Contact';
         await this.loadMessages();
         this.scrollToBottom();
+        window.WhatsAppSystems.navigationSystem.navigateTo('chatArea', { contactId });
     }
 
     async loadMessages() {
@@ -422,15 +524,12 @@ class ChatSystem {
             this.messagesContainer.innerHTML = messages.map(msg => {
                 const isMe = msg.senderId === 'user_id';
                 const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return msg.type === 'text' ? `
-                    <div class="mb-2 p-2 ${isMe ? 'message-sent' : 'message-received'}">
-                        <p>${msg.content}</p>
-                        <span class="timestamp">${time}</span>
-                    </div>
-                ` : `
-                    <div class="mb-2 p-2 ${isMe ? 'voice-message' : 'message-received'}">
-                        <audio controls src="${msg.audioUrl}" class="w-full"></audio>
-                        <span class="timestamp">${time}</span>
+                return `
+                    <div class="mb-4 flex ${isMe ? 'justify-end' : 'justify-start'}">
+                        <div class="${isMe ? 'message-sent' : 'message-received'} p-3 shadow">
+                            <p>${msg.content}</p>
+                            <span class="timestamp">${time}</span>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -438,10 +537,6 @@ class ChatSystem {
         } catch (error) {
             this.modalSystem.showModal('Erreur de chargement des messages.', 'error');
         }
-    }
-
-    scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
     async handleSendMessage() {
@@ -452,14 +547,16 @@ class ChatSystem {
             chatId: this.currentChatId,
             senderId: 'user_id',
             content,
-            type: 'text',
             timestamp: new Date().toISOString()
         };
         try {
+            this.modalSystem.showLoadingModal('Envoi du message...');
             await saveMessage(messageData);
             this.messageInput.value = '';
             await this.loadMessages();
+            this.modalSystem.hideLoadingModal();
         } catch (error) {
+            this.modalSystem.hideLoadingModal();
             this.modalSystem.showModal('Erreur lors de l\'envoi du message.', 'error');
         }
     }
@@ -474,7 +571,8 @@ class ChatSystem {
                 this.mediaRecorder.onstop = () => this.handleStopRecording();
                 this.mediaRecorder.start();
                 this.isRecording = true;
-                this.recordBtn.classList.add('bg-red-800');
+                this.recordBtn.classList.remove('bg-red-600');
+                this.recordBtn.classList.add('bg-green-600', 'animate-pulse-slow');
                 this.recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
                 this.modalSystem.showModal('Enregistrement en cours...', 'info');
             } catch (error) {
@@ -483,32 +581,47 @@ class ChatSystem {
         } else {
             this.mediaRecorder.stop();
             this.isRecording = false;
-            this.recordBtn.classList.remove('bg-red-800');
+            this.recordBtn.classList.remove('bg-green-600', 'animate-pulse-slow');
+            this.recordBtn.classList.add('bg-red-600');
             this.recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
             this.modalSystem.hideModal();
         }
     }
 
     async handleStopRecording() {
-        if (!this.currentChatId) return;
+        if (this.audioChunks.length === 0) {
+            this.modalSystem.showModal('Aucun audio enregistré.', 'warning');
+            return;
+        }
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        const duration = this.audioChunks.reduce((acc, chunk) => acc + (chunk.size / 1000), 0);
+        const metadata = { duration: this.audioChunks.length * 0.02 };
         try {
-            await saveVoiceMessage(this.currentChatId, { duration });
-            await this.loadMessages();
+            this.modalSystem.showLoadingModal('Envoi du message vocal...');
+            await saveVoiceMessage(this.currentChatId, metadata);
+            this.messagesContainer.innerHTML += `
+                <div class="mb-4 flex justify-end">
+                    <div class="voice-message p-3 shadow">
+                        <audio controls src="${URL.createObjectURL(audioBlob)}"></audio>
+                        <span class="timestamp">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                </div>
+            `;
+            this.scrollToBottom();
+            this.modalSystem.hideLoadingModal();
         } catch (error) {
+            this.modalSystem.hideLoadingModal();
             this.modalSystem.showModal('Erreur lors de l\'envoi du message vocal.', 'error');
         }
+    }
+
+    scrollToBottom() {
+        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
     pollMessages() {
         setInterval(async () => {
             if (this.currentChatId) {
-                try {
-                    await this.loadMessages();
-                } catch (error) {
-                    console.error('Polling error:', error);
-                }
+                await this.loadMessages();
             }
         }, 5000);
     }
@@ -519,9 +632,9 @@ class ChatSystem {
             'Voulez-vous vraiment vous déconnecter ?',
             () => {
                 this.modalSystem.showModal('Déconnexion réussie.', 'success');
-                this.currentChatId = null;
-                this.currentContact = null;
-                this.messagesContainer.innerHTML = '';
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
             },
             'question'
         );
@@ -530,8 +643,11 @@ class ChatSystem {
 
 document.addEventListener('DOMContentLoaded', () => {
     const modalSystem = new ModalSystem();
+    const chatSystem = new ChatSystem(modalSystem);
+    const navigationSystem = new NavigationSystem(modalSystem, chatSystem);
     window.WhatsAppSystems = {
         modalSystem,
-        chatSystem: new ChatSystem(modalSystem)
+        chatSystem,
+        navigationSystem
     };
 });
