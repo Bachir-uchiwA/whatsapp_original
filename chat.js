@@ -1,769 +1,859 @@
-const API_BASE_URL = 'https://projet-json-server-4.onrender.com';
+const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
-async function apiRequest(endpoint, options = {}) {
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: { 
-                'Content-Type': 'application/json', 
-                ...options.headers 
-            },
-            ...options,
-            credentials: 'omit' // Ajout pour éviter les problèmes de credentials si non nécessaires
-        });
+// Système de gestion des API
+class ApiManager {
+    static async request(endpoint, options = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    ...options.headers 
+                },
+                ...options,
+                credentials: 'omit'
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
         }
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+    }
+
+    static async getContacts() {
+        return await this.request('/contacts');
+    }
+
+    static async saveContact(contactData) {
+        return await this.request('/contacts', { 
+            method: 'POST', 
+            body: JSON.stringify(contactData) 
+        });
+    }
+
+    static async getMessages(chatId = null) {
+        const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
+        return await this.request(endpoint);
+    }
+
+    static async saveMessage(messageData) {
+        return await this.request('/messages', { 
+            method: 'POST', 
+            body: JSON.stringify(messageData) 
+        });
+    }
+
+    static async updateMessageStatus(messageId, status) {
+        return await this.request(`/messages/${messageId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+        });
+    }
+
+    static async deleteMessage(messageId) {
+        return await this.request(`/messages/${messageId}`, {
+            method: 'DELETE'
+        });
     }
 }
 
-async function saveContact(contactData) {
-    return await apiRequest('/contacts', { method: 'POST', body: JSON.stringify(contactData) });
-}
-
-async function getContacts() {
-    return await apiRequest('/contacts');
-}
-
-async function saveMessage(messageData) {
-    return await apiRequest('/messages', { method: 'POST', body: JSON.stringify(messageData) });
-}
-
-async function getMessages(chatId = null) {
-    const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
-    return await apiRequest(endpoint);
-}
-
-async function saveVoiceMessage(chatId, audioData) {
-    const formData = new FormData();
-    formData.append('chatId', chatId);
-    formData.append('audio', audioData, 'voice_message.webm');
-    return await apiRequest('/voice-messages', {
-        method: 'POST',
-        body: formData
-    });
-}
-
-class ModalSystem {
+// Système de gestion des emojis
+class EmojiManager {
     constructor() {
-        this.modal = document.getElementById('modal');
-        this.confirmModal = document.getElementById('confirm-modal');
-        this.loadingModal = document.getElementById('loading-modal');
-        this.tempPreview = document.getElementById('tempPreview');
-        this.currentView = null;
+        this.emojis = {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕'],
+            gestures: ['👍', '👎', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋'],
+            hearts: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
+            activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥅', '🏒', '🏑', '🥍', '🏏', '⛳', '🪃', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️‍♀️', '🏋️', '🏋️‍♂️', '🤼‍♀️', '🤼', '🤼‍♂️', '🤸‍♀️', '🤸', '🤸‍♂️', '⛹️‍♀️', '⛹️', '⛹️‍♂️', '🤺', '🤾‍♀️', '🤾', '🤾‍♂️', '🏌️‍♀️', '🏌️', '🏌️‍♂️', '🏇', '🧘‍♀️', '🧘', '🧘‍♂️', '🏄‍♀️', '🏄', '🏄‍♂️', '🏊‍♀️', '🏊', '🏊‍♂️', '🤽‍♀️', '🤽', '🤽‍♂️', '🚣‍♀️', '🚣', '🚣‍♂️', '🧗‍♀️', '🧗', '🧗‍♂️', '🚵‍♀️', '🚵', '🚵‍♂️', '🚴‍♀️', '🚴', '🚴‍♂️']
+        };
+        this.currentCategory = 'smileys';
+        this.isVisible = false;
+        this.init();
+    }
+
+    init() {
+        this.createEmojiPicker();
         this.setupEventListeners();
     }
 
+    createEmojiPicker() {
+        const picker = document.getElementById('emojiPicker');
+        if (!picker) return;
+
+        // Créer les onglets de catégories
+        const categories = document.createElement('div');
+        categories.className = 'flex gap-2 mb-3 border-b border-gray-600 pb-2';
+        
+        Object.keys(this.emojis).forEach(category => {
+            const tab = document.createElement('button');
+            tab.className = `px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                category === this.currentCategory 
+                    ? 'bg-green-600 text-white' 
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`;
+            tab.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+            tab.onclick = () => this.switchCategory(category);
+            categories.appendChild(tab);
+        });
+
+        picker.appendChild(categories);
+        this.updateEmojiGrid();
+    }
+
+    switchCategory(category) {
+        this.currentCategory = category;
+        this.updateEmojiGrid();
+        
+        // Mettre à jour les onglets
+        const tabs = document.querySelectorAll('#emojiPicker button');
+        tabs.forEach((tab, index) => {
+            const categories = Object.keys(this.emojis);
+            if (categories[index] === category) {
+                tab.className = 'px-3 py-1 rounded-lg text-xs font-medium bg-green-600 text-white transition-colors';
+            } else {
+                tab.className = 'px-3 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 transition-colors';
+            }
+        });
+    }
+
+    updateEmojiGrid() {
+        const grid = document.getElementById('emojiGrid');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        this.emojis[this.currentCategory].forEach(emoji => {
+            const button = document.createElement('button');
+            button.className = 'emoji-btn';
+            button.textContent = emoji;
+            button.onclick = () => this.selectEmoji(emoji);
+            grid.appendChild(button);
+        });
+    }
+
+    selectEmoji(emoji) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            const cursorPos = messageInput.selectionStart;
+            const textBefore = messageInput.value.substring(0, cursorPos);
+            const textAfter = messageInput.value.substring(cursorPos);
+            messageInput.value = textBefore + emoji + textAfter;
+            messageInput.focus();
+            messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+            
+            // Déclencher l'événement input pour mettre à jour le compteur
+            messageInput.dispatchEvent(new Event('input'));
+        }
+        this.hide();
+    }
+
+    show() {
+        const picker = document.getElementById('emojiPicker');
+        if (picker) {
+            picker.classList.remove('hidden');
+            this.isVisible = true;
+        }
+    }
+
+    hide() {
+        const picker = document.getElementById('emojiPicker');
+        if (picker) {
+            picker.classList.add('hidden');
+            this.isVisible = false;
+        }
+    }
+
+    toggle() {
+        if (this.isVisible) {
+            this.hide();
+        } else {
+            this.show();
+        }
+    }
+
     setupEventListeners() {
-        document.getElementById('modal-close')?.addEventListener('click', () => this.hideModal());
-        document.getElementById('confirm-cancel')?.addEventListener('click', () => this.hideConfirmModal());
-        [this.modal, this.confirmModal, this.loadingModal].forEach(modal => {
-            modal?.addEventListener('click', (e) => e.target === modal && this.hideAllModals());
-        });
-        document.addEventListener('keydown', (e) => e.key === 'Escape' && this.hideAllModals());
-    }
-
-    showModal(message, type = 'info') {
-        if (!this.modal) return;
-        const messageEl = document.getElementById('modal-message');
-        const iconEl = document.getElementById('modal-icon');
-        if (!messageEl || !iconEl) return;
-        messageEl.textContent = message;
-        const icons = {
-            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"><i class="fas fa-check text-white text-xl"></i></div>',
-            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-times text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-info text-white text-xl"></i></div>'
-        };
-        iconEl.innerHTML = icons[type] || icons.info;
-        this.modal.classList.remove('hidden');
-        this.modal.classList.add('animate-fade-in');
-        if (type === 'success') setTimeout(() => this.hideModal(), 3000);
-    }
-
-    hideModal() {
-        if (!this.modal) return;
-        this.modal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.modal.classList.add('hidden');
-            this.modal.classList.remove('animate-fade-in', 'animate-fade-out');
-        }, 200);
-    }
-
-    showConfirmModal(title, message, onConfirm, type = 'warning') {
-        if (!this.confirmModal) return;
-        const titleEl = document.getElementById('confirm-title');
-        const messageEl = document.getElementById('confirm-message');
-        const iconEl = document.getElementById('confirm-icon');
-        const confirmBtn = document.getElementById('confirm-ok');
-        if (!titleEl || !messageEl || !iconEl || !confirmBtn) return;
-        titleEl.textContent = title;
-        messageEl.textContent = message;
-        const icons = {
-            danger: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            question: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-question text-white text-xl"></i></div>'
-        };
-        iconEl.innerHTML = icons[type] || icons.warning;
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        newConfirmBtn.addEventListener('click', () => { this.hideConfirmModal(); onConfirm && onConfirm(); });
-        this.confirmModal.classList.remove('hidden');
-        this.confirmModal.classList.add('animate-fade-in');
-    }
-
-    hideConfirmModal() {
-        if (!this.confirmModal) return;
-        this.confirmModal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.confirmModal.classList.add('hidden');
-            this.confirmModal.classList.remove('animate-fade-in', 'animate-fade-out');
-        }, 200);
-    }
-
-    showLoadingModal(message = 'Chargement...') {
-        if (!this.loadingModal) return;
-        const messageEl = document.getElementById('loading-message');
-        if (!messageEl) return;
-        messageEl.textContent = message;
-        this.loadingModal.classList.remove('hidden');
-        this.loadingModal.classList.add('animate-fade-in');
-    }
-
-    hideLoadingModal() {
-        if (!this.loadingModal) return;
-        this.loadingModal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.loadingModal.classList.add('hidden');
-            this.loadingModal.classList.remove('animate-fade-in', 'animate-fade-out');
-        }, 200);
-    }
-
-    showNewContactFormInPreview() {
-        if (!this.tempPreview) return;
-        this.currentView = 'newContact';
-        const newContactHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
-                <div class="flex items-center mb-4">
-                    <button id="newContactBack" class="text-gray-400 hover:text-white text-2xl mr-4">←</button>
-                    <h2 class="text-white text-lg font-bold">Nouveau contact</h2>
-                </div>
-                <div class="flex-1 space-y-4 overflow-y-auto">
-                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
-                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
-                    <div class="flex items-center">
-                        <select id="contactCountryCode" class="w-24 p-2 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <option value="+221">SN +221</option>
-                            <option value="+33">FR +33</option>
-                            <option value="+1">US +1</option>
-                            <option value="+44">UK +44</option>
-                        </select>
-                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="flex-1 p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <input type="checkbox" id="syncContact" class="w-5 h-5 text-green-500 bg-gray-800 rounded focus:ring-green-500 focus:ring-offset-gray-900">
-                        <label for="syncContact" class="text-gray-300 text-sm">Synchroniser le contact sur le téléphone</label>
-                    </div>
-                    <button id="saveContactBtn" class="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg font-medium mt-4">Enregistrer</button>
-                    <p class="text-gray-500 text-xs text-center">Ce contact sera ajouté au carnet d'adresses de votre téléphone.</p>
-                </div>
-            </div>
-        `;
-        this.tempPreview.innerHTML = newContactHTML;
-        this.tempPreview.style.display = 'flex';
-        const backBtn = this.tempPreview.querySelector('#newContactBack');
-        backBtn?.addEventListener('click', () => {
-            if (this.currentView === 'newContact' && this.tempPreview) {
-                this.hideNewContactFormInPreview();
-                this.showNewChatInPreview();
-            }
-        });
-        const saveBtn = this.tempPreview.querySelector('#saveContactBtn');
-        saveBtn?.addEventListener('click', async () => {
-            const firstName = document.getElementById('contactFirstName').value.trim();
-            const lastName = document.getElementById('contactLastName').value.trim();
-            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
-            const sync = document.getElementById('syncContact').checked;
-            if (!firstName || !lastName || !phone) {
-                this.showModal('Veuillez remplir tous les champs obligatoires.', 'warning');
-                return;
-            }
-            const phoneRegex = /^[\+]?[0-9]{10,}$/;
-            if (!phoneRegex.test(phone)) {
-                this.showModal('Veuillez entrer un numéro de téléphone valide.', 'warning');
-                return;
-            }
-            const contactData = {
-                id: Date.now().toString(),
-                firstName,
-                lastName,
-                fullName: `${firstName} ${lastName}`,
-                phone,
-                country: phone.slice(1, 3),
-                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
-                createdAt: new Date().toISOString()
-            };
-            this.showLoadingModal('Ajout du contact...');
-            try {
-                await saveContact(contactData);
-                this.hideLoadingModal();
-                this.showModal(`Contact ${contactData.fullName} ajouté avec succès !`, 'success');
-                this.hideNewContactFormInPreview();
-                this.showNewChatInPreview();
-                const chatSystem = window.WhatsAppSystems?.chatSystem;
-                if (chatSystem) await chatSystem.updateContactsList();
-            } catch (error) {
-                this.hideLoadingModal();
-                this.showModal('Erreur lors de l\'ajout du contact. Vérifiez votre connexion ou le serveur.', 'error');
+        // Fermer le picker en cliquant à l'extérieur
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('emojiPicker');
+            const emojiBtn = document.getElementById('emojiBtn');
+            
+            if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
+                this.hide();
             }
         });
     }
+}
 
-    hideNewContactFormInPreview() {
-        if (!this.tempPreview) return;
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
+// Système de gestion des messages
+class MessageManager {
+    constructor() {
+        this.messages = new Map();
+        this.currentChatId = null;
+        this.typingTimeout = null;
+        this.isTyping = false;
     }
 
-    showSettingsInPreview() {
-        if (!this.tempPreview) return;
-        this.currentView = 'settings';
-        const settingsHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 animate-slide-up">
-                <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
-                    <input type="text" placeholder="Rechercher dans les paramètres" class="w-3/4 bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 text-center hover:bg-gray-700">
-                </div>
-                <div class="flex flex-col items-center pt-8 pb-6 border-b border-gray-800 relative">
-                    <div class="relative group">
-                        <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-4 border-gray-700 shadow-lg group-hover:border-gray-600 transition-colors duration-200">
-                        <span class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-2 border-gray-900 rounded-full animate-pulse"></span>
-                    </div>
-                    <div class="mt-4 text-white font-bold text-xl flex items-center gap-2">Bachir_deV <span class="text-lg">💻❌🇸🇳🖤</span></div>
-                    <div class="text-green-400 text-xs font-semibold mt-1 flex items-center gap-1">
-                        <span class="w-2 h-2 bg-green-400 rounded-full inline-block animate-pulse"></span>
-                        En ligne
-                    </div>
-                    <div class="text-gray-400 text-xs mt-2 px-4 text-center">Salut ! J'utilise WhatsApp.</div>
-                </div>
-                <div class="flex-1 px-0 py-0 overflow-y-auto scrollbar-thin">
-                    <ul class="divide-y divide-gray-800">
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-shield text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Compte</div><div class="text-gray-500 text-xs">Notifications de sécurité, informations de compte</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-lock text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Confidentialité</div><div class="text-gray-500 text-xs">Contacts bloqués, messages éphémères</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-comments text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Discussions</div><div class="text-gray-500 text-xs">Thème, fond d'écran, paramètres des discussions</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-bell text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Notifications</div><div class="text-gray-500 text-xs">Notifications de messages</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-keyboard text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Raccourcis clavier</div><div class="text-gray-500 text-xs">Raccourcis pour naviguer plus rapidement</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-download text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Stockage et données</div><div class="text-gray-500 text-xs">Utilisation du réseau, téléchargement automatique</div></div></a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-question-circle text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Aide</div><div class="text-gray-500 text-xs">Centre d'aide, nous contacter, conditions d'utilisation</div></div></a></li>
-                        <li><a href="#" id="settingsLogout" class="flex items-center px-8 py-5 hover:bg-red-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-sign-out-alt text-red-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-red-300 font-medium group-hover:text-red-200 transition-colors duration-200">Se déconnecter</div><div class="text-gray-500 text-xs">Déconnexion de WhatsApp Web</div></div></a></li>
-                    </ul>
-                </div>
-            </div>
-        `;
-        this.tempPreview.innerHTML = settingsHTML;
-        this.tempPreview.style.display = 'flex';
-        const logoutBtn = this.tempPreview.querySelector('#settingsLogout');
-        logoutBtn?.addEventListener('click', () => {
-            const chatSystem = window.WhatsAppSystems?.chatSystem;
-            chatSystem?.logout();
+    formatTime(timestamp) {
+        return new Date(timestamp).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
         });
     }
 
-    hideSettingsInPreview() {
-        if (!this.tempPreview) return;
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return "Aujourd'hui";
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return "Hier";
+        } else {
+            return date.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
     }
 
-    showNewChatInPreview() {
-        if (!this.tempPreview) return;
-        this.currentView = 'newChat';
-        this.showLoadingModal('Chargement des contacts...');
-        getContacts().then(contacts => {
-            this.hideLoadingModal();
-            const newChatHTML = `
-                <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
-                    <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
-                        <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
-                        <button id="closePreview" class="text-white hover:text-gray-300">
-                            <i class="fas fa-times text-xl"></i>
+    getMessageStatusIcon(status) {
+        switch (status) {
+            case 'sending':
+                return '<i class="fas fa-clock text-gray-400 text-xs"></i>';
+            case 'sent':
+                return '<i class="fas fa-check text-gray-400 text-xs"></i>';
+            case 'delivered':
+                return '<i class="fas fa-check-double text-gray-400 text-xs"></i>';
+            case 'read':
+                return '<i class="fas fa-check-double text-blue-400 text-xs"></i>';
+            default:
+                return '';
+        }
+    }
+
+    createMessageElement(message, showDate = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-group mb-4';
+        messageDiv.dataset.messageId = message.id;
+
+        let html = '';
+
+        // Séparateur de date
+        if (showDate) {
+            html += `
+                <div class="date-separator">
+                    <span>${this.formatDate(message.timestamp)}</span>
+                </div>
+            `;
+        }
+
+        // Message bubble
+        const isOwn = message.sender === 'me';
+        const bubbleClass = isOwn ? 'own' : 'other';
+        
+        html += `
+            <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2">
+                <div class="message-bubble ${bubbleClass} p-3 relative group">
+                    ${this.renderMessageContent(message)}
+                    
+                    <div class="message-time">
+                        ${this.formatTime(message.timestamp)}
+                        ${isOwn ? `<span class="message-status">${this.getMessageStatusIcon(message.status)}</span>` : ''}
+                    </div>
+
+                    <!-- Menu contextuel -->
+                    <div class="message-menu">
+                        <button onclick="messageManager.replyToMessage('${message.id}')" class="p-2 text-gray-400 hover:text-white rounded" title="Répondre">
+                            <i class="fas fa-reply text-sm"></i>
+                        </button>
+                        <button onclick="messageManager.showQuickReactions('${message.id}')" class="p-2 text-gray-400 hover:text-white rounded" title="Réagir">
+                            <i class="fas fa-smile text-sm"></i>
+                        </button>
+                        <button onclick="messageManager.showMessageOptions('${message.id}')" class="p-2 text-gray-400 hover:text-white rounded" title="Plus">
+                            <i class="fas fa-ellipsis-v text-sm"></i>
                         </button>
                     </div>
-                    <div class="flex-1 overflow-y-auto">
-                        <div class="p-4">
-                            <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                                <i class="fas fa-users text-xl text-green-500 mr-3"></i>
-                                <span>Nouveau groupe</span>
-                            </button>
-                            <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                                <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
-                                <span>Nouveau contact</span>
-                            </button>
-                            <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                                <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
-                                <span>Nouvelle communauté</span>
-                            </button>
-                        </div>
-                        <div class="p-4 border-t-2 border-gray-700">
-                            <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
-                            <div class="mt-2">
-                                ${contacts.map(contact => {
-                                    const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
-                                    return `
-                                        <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                            <div class="${avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                                <span class="text-white font-bold">${avatar.initial}</span>
-                                            </div>
-                                            <div>
-                                                <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
-                                                <p class="text-gray-400 text-sm">${contact.phone || ''}</p>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">B</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-white">Bachir IIR 👀 (vous)</p>
-                                        <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+                    <!-- Réactions rapides -->
+                    <div class="quick-reactions">
+                        <button onclick="messageManager.addReaction('${message.id}', '👍')" class="text-lg hover:scale-110 transition-transform">👍</button>
+                        <button onclick="messageManager.addReaction('${message.id}', '❤️')" class="text-lg hover:scale-110 transition-transform">❤️</button>
+                        <button onclick="messageManager.addReaction('${message.id}', '😂')" class="text-lg hover:scale-110 transition-transform">😂</button>
+                        <button onclick="messageManager.addReaction('${message.id}', '😮')" class="text-lg hover:scale-110 transition-transform">😮</button>
+                        <button onclick="messageManager.addReaction('${message.id}', '😢')" class="text-lg hover:scale-110 transition-transform">😢</button>
+                        <button onclick="messageManager.addReaction('${message.id}', '🙏')" class="text-lg hover:scale-110 transition-transform">🙏</button>
+                    </div>
+
+                    <!-- Réactions existantes -->
+                    ${this.renderReactions(message.reactions)}
+                </div>
+            </div>
+        `;
+
+        messageDiv.innerHTML = html;
+        return messageDiv;
+    }
+
+    renderMessageContent(message) {
+        switch (message.type) {
+            case 'text':
+                return `<div class="break-words">${this.formatMessageText(message.content)}</div>`;
+            
+            case 'voice':
+                return this.renderVoiceMessage(message);
+            
+            case 'image':
+                return `
+                    <div class="max-w-xs">
+                        <img src="${message.imageUrl}" alt="Image" class="rounded-lg max-w-full h-auto">
+                        ${message.content ? `<div class="mt-2 break-words">${this.formatMessageText(message.content)}</div>` : ''}
+                    </div>
+                `;
+            
+            default:
+                return `<div class="break-words">${message.content || 'Message non supporté'}</div>`;
+        }
+    }
+
+    renderVoiceMessage(message) {
+        const duration = message.audioDuration || 15;
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        
+        return `
+            <div class="voice-message">
+                <button class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white hover:bg-green-700 transition-colors" onclick="messageManager.playVoiceMessage('${message.id}')">
+                    <i class="fas fa-play text-sm"></i>
+                </button>
+                <div class="voice-waveform">
+                    ${this.generateWaveform()}
+                </div>
+                <span class="text-xs text-gray-600">${minutes}:${seconds.toString().padStart(2, '0')}</span>
+            </div>
+        `;
+    }
+
+    generateWaveform() {
+        let waveform = '';
+        for (let i = 0; i < 20; i++) {
+            const height = Math.random() * 20 + 8;
+            waveform += `<div class="wave-bar" style="height: ${height}px;"></div>`;
+        }
+        return waveform;
+    }
+
+    renderReactions(reactions) {
+        if (!reactions || reactions.length === 0) return '';
+
+        const reactionCounts = {};
+        reactions.forEach(reaction => {
+            reactionCounts[reaction.emoji] = (reactionCounts[reaction.emoji] || 0) + 1;
+        });
+
+        let reactionsHtml = '<div class="message-reactions">';
+        Object.entries(reactionCounts).forEach(([emoji, count]) => {
+            reactionsHtml += `
+                <div class="reaction">
+                    <span>${emoji}</span>
+                    <span>${count}</span>
+                </div>
+            `;
+        });
+        reactionsHtml += '</div>';
+
+        return reactionsHtml;
+    }
+
+    formatMessageText(text) {
+        // Formatage basique du texte (liens, mentions, etc.)
+        return text
+            .replace(/\*([^*]+)\*/g, '<strong>$1</strong>') // Gras
+            .replace(/_([^_]+)_/g, '<em>$1</em>') // Italique
+            .replace(/~([^~]+)~/g, '<del>$1</del>') // Barré
+            .replace(/```([^`]+)```/g, '<code class="bg-gray-200 px-1 rounded">$1</code>'); // Code
+    }
+
+    addReaction(messageId, emoji) {
+        console.log(`Ajout de la réaction ${emoji} au message ${messageId}`);
+        // Ici, vous pouvez implémenter la logique pour sauvegarder la réaction
+        // et mettre à jour l'affichage
+    }
+
+    replyToMessage(messageId) {
+        console.log(`Répondre au message ${messageId}`);
+        // Implémenter la logique de réponse
+    }
+
+    showQuickReactions(messageId) {
+        console.log(`Afficher les réactions rapides pour ${messageId}`);
+    }
+
+    showMessageOptions(messageId) {
+        console.log(`Afficher les options pour ${messageId}`);
+    }
+
+    playVoiceMessage(messageId) {
+        console.log(`Lire le message vocal ${messageId}`);
+        // Implémenter la lecture audio
+    }
+
+    showTypingIndicator(contactName) {
+        const chatHeader = document.querySelector('#chatArea .bg-gray-900');
+        if (!chatHeader) return;
+
+        const statusElement = chatHeader.querySelector('.text-gray-400');
+        if (statusElement) {
+            statusElement.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>en train d'écrire</span>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
                     </div>
                 </div>
             `;
-            this.tempPreview.innerHTML = newChatHTML;
-            this.tempPreview.style.display = 'flex';
-            const closeBtn = this.tempPreview.querySelector('#closePreview');
-            closeBtn?.addEventListener('click', () => {
-                if (this.currentView === 'newChat' && this.tempPreview) {
-                    this.hideNewChatInPreview();
-                    const navigationSystem = window.WhatsAppSystems?.navigationSystem;
-                    navigationSystem?.showChats();
-                }
-            });
-            const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
-            newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
-        }).catch(error => {
-            this.hideLoadingModal();
-            this.showModal('Erreur lors du chargement des contacts. Vérifiez votre connexion ou le serveur.', 'error');
-        });
-    }
-
-    hideNewChatInPreview() {
-        if (!this.tempPreview) return;
-        this.tempPreview.style.display = 'none';
-        this.tempPreview.innerHTML = '';
-        this.currentView = null;
-    }
-
-    hideAllModals() {
-        this.hideModal();
-        this.hideConfirmModal();
-        this.hideLoadingModal();
-    }
-
-    success(message, title = 'Succès') { this.showModal(message, 'success'); }
-    error(message, title = 'Erreur') { this.showModal(message, 'error'); }
-    warning(message, title = 'Attention') { this.showModal(message, 'warning'); }
-    info(message, title = 'Information') { this.showModal(message, 'info'); }
-    confirm(title, message, onConfirm, type = 'warning') { this.showConfirmModal(title, message, onConfirm, type); }
-    loading(message = 'Chargement...') { this.showLoadingModal(message); }
-    hideLoading() { this.hideLoadingModal(); }
-}
-
-class NavigationSystem {
-    constructor() {
-        this.sidebarChats = document.getElementById('sidebarChats');
-        this.tempPreview = document.getElementById('tempPreview');
-        this.modalSystem = new ModalSystem();
-        this.currentView = 'chats';
-        this.setupEventListeners();
-    }
-
-    setupEventListeners() {
-        document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.showChats());
-        document.getElementById('settingsIcon')?.addEventListener('click', () => this.showSettings());
-        document.getElementById('menuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleContextMenu(); });
-        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showNewChat());
-        document.addEventListener('click', () => this.hideContextMenu());
-        document.getElementById('contextMenu')?.addEventListener('click', (e) => e.stopPropagation());
-    }
-
-    showChats() {
-        if (this.currentView === 'chats') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideSettingsInPreview();
-            this.modalSystem.hideNewChatInPreview();
-            this.sidebarChats.style.display = 'flex';
-            this.tempPreview.style.display = 'none';
-            this.currentView = 'chats';
-        });
-    }
-
-    showSettings() {
-        if (this.currentView === 'settings') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideNewChatInPreview();
-            this.modalSystem.showSettingsInPreview();
-            this.sidebarChats.style.display = 'none';
-            this.currentView = 'settings';
-        });
-    }
-
-    showNewChat() {
-        if (this.currentView === 'newChat') return;
-        this.animateTransition(() => {
-            this.modalSystem.hideNewContactFormInPreview();
-            this.modalSystem.hideSettingsInPreview();
-            this.modalSystem.showNewChatInPreview();
-            this.sidebarChats.style.display = 'none';
-            this.currentView = 'newChat';
-        });
-    }
-
-    toggleContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (!contextMenu) return;
-        if (contextMenu.classList.contains('hidden')) {
-            contextMenu.classList.remove('hidden');
-            contextMenu.classList.add('animate-scale-in');
-        } else {
-            this.hideContextMenu();
+            statusElement.classList.add('text-green-400');
+            statusElement.classList.remove('text-gray-400');
         }
     }
 
-    hideContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (contextMenu && !contextMenu.classList.contains('hidden')) {
-            contextMenu.classList.remove('animate-scale-in');
-            contextMenu.classList.add('animate-scale-out');
-            setTimeout(() => { contextMenu.classList.add('hidden'); contextMenu.classList.remove('animate-scale-out'); }, 200);
+    hideTypingIndicator() {
+        const chatHeader = document.querySelector('#chatArea .bg-gray-900');
+        if (!chatHeader) return;
+
+        const statusElement = chatHeader.querySelector('.text-green-400');
+        if (statusElement) {
+            statusElement.textContent = 'en ligne';
+            statusElement.classList.remove('text-green-400');
+            statusElement.classList.add('text-gray-400');
         }
     }
 
-    animateTransition(callback) {
-        const elements = [this.sidebarChats, this.tempPreview].filter(el => el);
-        elements.forEach(el => el.classList.add('animate-fade-out'));
-        setTimeout(() => {
-            callback();
-            elements.forEach(el => el.classList.remove('animate-fade-out'));
-            elements.filter(el => !el.classList.contains('hidden')).forEach(el => el.classList.add('animate-fade-in'));
-        }, 200);
+    startTyping() {
+        if (!this.isTyping) {
+            this.isTyping = true;
+            // Envoyer l'indicateur de frappe au serveur
+        }
+
+        clearTimeout(this.typingTimeout);
+        this.typingTimeout = setTimeout(() => {
+            this.stopTyping();
+        }, 3000);
+    }
+
+    stopTyping() {
+        if (this.isTyping) {
+            this.isTyping = false;
+            clearTimeout(this.typingTimeout);
+            // Arrêter l'indicateur de frappe sur le serveur
+        }
     }
 }
 
+// Système principal de chat
 class ChatSystem {
     constructor() {
-        this.chatArea = document.querySelector('.flex-1.flex.flex-col.bg-gray-800');
-        this.messagesContainer = document.getElementById('messagesContainer');
-        this.messageInput = document.getElementById('messageInput');
-        this.sendBtn = document.getElementById('sendBtn');
-        this.charCount = document.getElementById('charCount');
-        this.typingIndicator = document.getElementById('typingIndicator');
-        this.emojiBtn = document.getElementById('emojiBtn');
-        this.emojiPanel = document.getElementById('emojiPanel');
-        this.attachBtn = document.getElementById('attachBtn');
-        this.recordBtn = document.getElementById('recordBtn');
-        this.modalSystem = new ModalSystem();
-        this.navigationSystem = new NavigationSystem();
         this.currentChatId = null;
         this.currentContact = null;
+        this.messageManager = new MessageManager();
+        this.emojiManager = new EmojiManager();
         this.isRecording = false;
         this.mediaRecorder = null;
         this.audioChunks = [];
-        window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
+        
+        this.init();
+    }
+
+    async init() {
+        await this.loadContacts();
         this.setupEventListeners();
-        this.loadInitialData();
         this.showDefaultView();
     }
 
-    setupEventListeners() {
-        this.sendBtn?.addEventListener('click', () => this.handleSendMessage());
-        this.messageInput?.addEventListener('input', (e) => this.updateCharCount(e.target.value));
-        this.messageInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSendMessage();
-            }
-        });
-        this.emojiBtn?.addEventListener('click', () => this.toggleEmojiPanel());
-        this.emojiPanel?.addEventListener('click', (e) => e.target.tagName === 'BUTTON' && this.addEmoji(e.target.textContent));
-        this.attachBtn?.addEventListener('click', () => this.showAttachmentOptions());
-        this.recordBtn?.addEventListener('mousedown', () => this.startRecording());
-        this.recordBtn?.addEventListener('mouseup', () => this.stopRecording());
-        this.recordBtn?.addEventListener('touchstart', (e) => { e.preventDefault(); this.startRecording(); }, { passive: false });
-        this.recordBtn?.addEventListener('touchend', (e) => { e.preventDefault(); this.stopRecording(); }, { passive: false });
-        document.getElementById('chatMenuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleChatMenu(); });
-        document.getElementById('contextMenu')?.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A') {
-                e.preventDefault();
-                this.handleContextMenuAction(e.target.textContent);
-            }
-        });
-        const contactsList = document.getElementById('contactsList');
-        contactsList?.addEventListener('click', (e) => {
-            const contactElement = e.target.closest('div[data-contact-id]');
-            if (contactElement) {
-                const contactId = contactElement.getAttribute('data-contact-id');
-                this.selectContact(contactId);
-            }
-        });
-    }
-
-    async loadInitialData() {
-        await this.updateContactsList();
-    }
-
-    async updateContactsList() {
+    async loadContacts() {
         try {
-            const contacts = await getContacts();
-            const contactsList = document.getElementById('contactsList');
-            if (contactsList) {
-                contactsList.innerHTML = contacts.map(contact => {
-                    const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
-                    const unreadCount = Math.floor(Math.random() * 10); // Simule un nombre de messages non lus
-                    return `
-                        <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
-                            <div class="${avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
-                                <span class="text-white font-bold">${avatar.initial}</span>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
-                                    <span class="text-gray-500 text-xs">01:40</span>
-                                </div>
-                                <div class="text-gray-400 text-sm">${contact.phone || ''}</div>
-                            </div>
-                            ${unreadCount > 0 ? `<div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">${unreadCount}</div>` : ''}
-                        </div>
-                    `;
-                }).join('');
-            }
+            const contacts = await ApiManager.getContacts();
+            this.renderContactsList(contacts);
         } catch (error) {
-            this.modalSystem.error('Erreur lors du chargement des contacts. Vérifiez votre connexion ou le serveur.');
+            console.error('Erreur lors du chargement des contacts:', error);
         }
     }
 
-    showDefaultView() {
-        if (this.chatArea) {
-            this.chatArea.innerHTML = `
-                <div class="flex-1 bg-gray-800 flex items-center justify-center">
-                    <div class="text-center max-w-md">
-                        <div class="mb-8 relative">
-                            <div class="relative mx-auto w-80 h-60">
-                                <svg class="absolute left-0 top-8 z-0" width="320" height="120" viewBox="0 0 320 120" fill="none">
-                                    <ellipse cx="160" cy="60" rx="140" ry="55" fill="#23272b"/>
-                                </svg>
-                                <svg class="absolute left-16 top-32 z-10" width="40" height="20" viewBox="0 0 40 20" fill="none">
-                                    <ellipse cx="20" cy="10" rx="18" ry="8" fill="#374151" opacity="0.7"/>
-                                </svg>
-                                <svg class="absolute left-32 top-20 z-10" width="30" height="14" viewBox="0 0 30 14" fill="none">
-                                    <ellipse cx="15" cy="7" rx="13" ry="6" fill="#374151" opacity="0.7"/>
-                                </svg>
-                                <svg class="absolute right-16 top-16 z-10" width="30" height="14" viewBox="0 0 30 14" fill="none">
-                                    <ellipse cx="15" cy="7" rx="13" ry="6" fill="#374151" opacity="0.7"/>
-                                </svg>
-                                <div class="absolute left-4 top-16 w-20 h-32 rounded-xl border-2 border-teal-200 bg-gray-900 shadow-lg z-20" style="transform: rotate(-10deg);">
-                                    <div class="w-full h-full flex flex-col items-center justify-center">
-                                        <div class="w-3 h-3 rounded-full border-2 border-gray-700 mt-2 mb-2"></div>
-                                        <div class="flex flex-col items-center mt-2">
-                                            <div class="flex space-x-0.5 mb-1">
-                                                <div class="w-1 h-2 bg-gray-500 rounded"></div>
-                                                <div class="w-1 h-3 bg-gray-500 rounded"></div>
-                                                <div class="w-1 h-4 bg-gray-500 rounded"></div>
-                                                <div class="w-1 h-5 bg-gray-500 rounded"></div>
-                                            </div>
-                                            <span class="text-red-400 text-lg font-bold -mt-2">×</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="absolute right-2 top-10 w-40 h-28 z-20" style="transform: rotate(3deg);">
-                                    <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
-                                        <div class="w-12 h-12 bg-emerald-400 rounded-full flex items-center justify-center">
-                                            <svg width="28" height="28" fill="none" viewBox="0 0 28 28">
-                                                <circle cx="14" cy="14" r="14" fill="#34d399"/>
-                                                <path d="M8 15.5l4 4 8-9" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="w-44 h-3 bg-teal-200 rounded-b-lg -mt-1 mx-auto"></div>
-                                </div>
-                            </div>
+    renderContactsList(contacts) {
+        const contactsList = document.getElementById('contactsList');
+        if (!contactsList) return;
+
+        contactsList.innerHTML = contacts.map(contact => {
+            const avatar = contact.avatar || { 
+                color: 'bg-green-500', 
+                initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() 
+            };
+            const unreadCount = Math.floor(Math.random() * 10);
+            const lastMessage = this.getLastMessage(contact.id);
+            
+            return `
+                <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer transition-colors duration-200 group" 
+                     data-contact-id="${contact.id}" 
+                     onclick="chatSystem.selectContact('${contact.id}')">
+                    <div class="relative">
+                        <div class="${avatar.color} w-12 h-12 rounded-full flex items-center justify-center">
+                            ${avatar.url ? 
+                                `<img src="${avatar.url}" alt="${contact.fullName}" class="w-full h-full rounded-full object-cover">` :
+                                `<span class="text-white font-bold text-lg">${avatar.initial}</span>`
+                            }
                         </div>
-                        <h2 class="text-2xl font-light text-white mb-4">WhatsApp Web</h2>
-                        <p class="text-gray-300 text-sm leading-relaxed mb-2">
-                            Envoyez et recevez des messages sans avoir à garder votre téléphone connecté.
-                        </p>
-                        <p class="text-gray-300 text-sm leading-relaxed">
-                            Utilisez WhatsApp sur un maximum de 4 appareils et 1 téléphone, simultanément.
-                        </p>
-                        <div class="flex items-center justify-center mt-8 text-gray-400 text-xs">
-                            <i class="fas fa-lock mr-2"></i>
-                            <span>Vos messages personnels sont chiffrés de bout en bout</span>
+                        ${contact.status === 'online' ? 
+                            '<div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-gray-900 rounded-full"></div>' : 
+                            ''
+                        }
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center">
+                            <span class="text-white font-semibold truncate group-hover:text-green-400 transition-colors">
+                                ${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}
+                            </span>
+                            <span class="text-gray-500 text-xs">
+                                ${lastMessage ? this.messageManager.formatTime(lastMessage.timestamp) : ''}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center mt-1">
+                            <div class="text-gray-400 text-sm truncate">
+                                ${contact.isTyping ? 
+                                    '<span class="text-green-400 italic">en train d\'écrire...</span>' :
+                                    (lastMessage ? lastMessage.content : contact.phone)
+                                }
+                            </div>
+                            
+                            ${unreadCount > 0 ? 
+                                `<div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                    ${unreadCount}
+                                </div>` : 
+                                ''
+                            }
                         </div>
                     </div>
                 </div>
             `;
-        }
+        }).join('');
     }
 
-    updateCharCount(text) {
-        const count = text.length;
-        this.charCount.textContent = `${count}`;
-        if (count > 0) {
-            this.sendBtn.classList.remove('hidden');
-            this.recordBtn.classList.add('hidden');
-        } else {
-            this.sendBtn.classList.add('hidden');
-            this.recordBtn.classList.remove('hidden');
-        }
+    getLastMessage(contactId) {
+        // Simuler le dernier message pour la démo
+        return {
+            content: "Dernier message...",
+            timestamp: new Date().toISOString()
+        };
     }
 
     async selectContact(contactId) {
-        this.currentChatId = contactId;
-        const contacts = await getContacts();
-        this.currentContact = contacts.find(contact => contact.id === contactId);
-        if (this.currentContact && this.chatArea) {
-            const avatar = this.currentContact.avatar || { color: 'bg-green-500', initial: (this.currentContact.firstName?.charAt(0) || 'A').toUpperCase() };
-            this.chatArea.innerHTML = `
-                <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
-                    <div class="flex items-center space-x-3">
-                        <div class="${avatar.color} w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
-                            <span class="text-white font-bold">${avatar.initial}</span>
-                        </div>
-                        <div class="text-white">
-                            <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</div>
-                            <div id="typingIndicator" class="text-gray-400 text-sm hidden">En train d'écrire...</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <button id="chatMenuBtn" class="text-gray-400 hover:text-white"><i class="fas fa-ellipsis-v text-xl"></i></button>
-                    </div>
-                </div>
-                <div class="flex-1 p-4 overflow-y-auto scrollbar-thin" id="messagesContainerWrapper">
-                    <div id="messagesContainer" class="flex flex-col space-y-4">
-                    </div>
-                </div>
-                <div class="bg-gray-900 p-4 border-t border-gray-700">
-                    <div class="flex items-center space-x-4">
-                        <button id="emojiBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
-                            <i class="far fa-smile text-xl"></i>
-                        </button>
-                        <button id="attachBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
-                            <i class="fas fa-paperclip text-xl"></i>
-                        </button>
-                        <div class="flex-1 relative">
-                            <input id="messageInput" type="text" placeholder="Écrivez un message" class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200">
-                            <span id="charCount" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">0</span>
-                        </div>
-                        <button id="sendBtn" class="bg-green-600 hover:bg-green-700 text-white rounded-full p-2 hidden transition-colors duration-200">
-                            <i class="fas fa-paper-plane text-xl"></i>
-                        </button>
-                        <button id="recordBtn" class="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 flex items-center justify-center transition-colors duration-200">
-                            <i class="fas fa-microphone text-xl"></i>
-                        </button>
-                    </div>
-                    <div id="emojiPanel" class="hidden absolute bottom-20 right-4 bg-gray-800 rounded-lg p-4 shadow-lg grid grid-cols-6 gap-2">
-                        <button class="text-2xl">😊</button>
-                        <button class="text-2xl">😂</button>
-                        <button class="text-2xl">😍</button>
-                        <button class="text-2xl">👍</button>
-                        <button class="text-2xl">🙌</button>
-                        <button class="text-2xl">🎉</button>
-                    </div>
-                    <div id="recordingIndicator" class="hidden text-red-400 text-sm mt-2">Enregistrement en cours... <span class="recording-dot animate-pulse"></span></div>
-                </div>
-            `;
-            this.setupEventListeners();
-            await this.loadMessages();
+        try {
+            const contacts = await ApiManager.getContacts();
+            this.currentContact = contacts.find(c => c.id === contactId);
+            this.currentChatId = contactId;
+            
+            if (this.currentContact) {
+                this.renderChatInterface();
+                await this.loadMessages();
+            }
+        } catch (error) {
+            console.error('Erreur lors de la sélection du contact:', error);
         }
+    }
+
+    renderChatInterface() {
+        const chatArea = document.getElementById('chatArea');
+        if (!chatArea || !this.currentContact) return;
+
+        const avatar = this.currentContact.avatar || { 
+            color: 'bg-green-500', 
+            initial: (this.currentContact.firstName?.charAt(0) || 'A').toUpperCase() 
+        };
+
+        chatArea.innerHTML = `
+            <!-- En-tête du chat -->
+            <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div class="${avatar.color} w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
+                            ${avatar.url ? 
+                                `<img src="${avatar.url}" alt="${this.currentContact.fullName}" class="w-full h-full rounded-full object-cover">` :
+                                `<span class="text-white font-bold">${avatar.initial}</span>`
+                            }
+                        </div>
+                        ${this.currentContact.status === 'online' ? 
+                            '<div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-gray-900 rounded-full"></div>' : 
+                            ''
+                        }
+                    </div>
+
+                    <div>
+                        <h2 class="text-white font-semibold text-lg">
+                            ${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}
+                        </h2>
+                        <p class="text-gray-400 text-sm">
+                            ${this.currentContact.status === 'online' ? 'en ligne' : 'hors ligne'}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Appel vidéo">
+                        <i class="fas fa-video text-xl"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Appel vocal">
+                        <i class="fas fa-phone text-xl"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Rechercher">
+                        <i class="fas fa-search text-xl"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Menu">
+                        <i class="fas fa-ellipsis-v text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zone des messages -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin p-4" id="messagesContainer">
+                <!-- Les messages seront chargés ici -->
+            </div>
+
+            <!-- Zone de saisie -->
+            <div class="bg-gray-900 p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <button id="emojiBtn" class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Emoji">
+                        <i class="far fa-smile text-xl"></i>
+                    </button>
+                    
+                    <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Pièce jointe">
+                        <i class="fas fa-paperclip text-xl"></i>
+                    </button>
+
+                    <div class="flex-1 relative">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Tapez un message..." 
+                            class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                        />
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                            <span id="charCount">0</span>/4096
+                        </div>
+                    </div>
+
+                    <button id="sendBtn" class="p-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition-colors hidden" title="Envoyer">
+                        <i class="fas fa-paper-plane text-xl"></i>
+                    </button>
+
+                    <button id="recordBtn" class="p-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition-colors" title="Message vocal">
+                        <i class="fas fa-microphone text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="recordingIndicator" class="hidden text-red-400 text-sm mt-2 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    <span>Enregistrement en cours...</span>
+                    <span id="recordingTime">0:00</span>
+                </div>
+            </div>
+        `;
+
+        this.setupChatEventListeners();
+    }
+
+    setupEventListeners() {
+        // Événements globaux
+        document.addEventListener('click', (e) => {
+            // Fermer l'emoji picker si on clique ailleurs
+            if (!e.target.closest('#emojiPicker') && !e.target.closest('#emojiBtn')) {
+                this.emojiManager.hide();
+            }
+        });
+    }
+
+    setupChatEventListeners() {
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const charCount = document.getElementById('charCount');
+
+        if (messageInput) {
+            messageInput.addEventListener('input', (e) => {
+                const length = e.target.value.length;
+                charCount.textContent = length;
+                
+                if (length > 0) {
+                    sendBtn.classList.remove('hidden');
+                    recordBtn.classList.add('hidden');
+                } else {
+                    sendBtn.classList.add('hidden');
+                    recordBtn.classList.remove('hidden');
+                }
+
+                // Indicateur de frappe
+                this.messageManager.startTyping();
+            });
+
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+        }
+
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => this.sendMessage());
+        }
+
+        if (recordBtn) {
+            recordBtn.addEventListener('mousedown', () => this.startRecording());
+            recordBtn.addEventListener('mouseup', () => this.stopRecording());
+            recordBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startRecording();
+            });
+            recordBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.stopRecording();
+            });
+        }
+
+        if (emojiBtn) {
+            emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
+        }
+    }
+
+    async sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        if (!messageInput || !messageInput.value.trim() || !this.currentChatId) return;
+
+        const messageData = {
+            id: Date.now().toString(),
+            chatId: this.currentChatId,
+            sender: 'me',
+            content: messageInput.value.trim(),
+            type: 'text',
+            timestamp: new Date().toISOString(),
+            status: 'sending'
+        };
+
+        // Ajouter le message à l'interface immédiatement
+        this.addMessageToInterface(messageData);
+        
+        // Vider le champ de saisie
+        messageInput.value = '';
+        document.getElementById('charCount').textContent = '0';
+        document.getElementById('sendBtn').classList.add('hidden');
+        document.getElementById('recordBtn').classList.remove('hidden');
+
+        // Arrêter l'indicateur de frappe
+        this.messageManager.stopTyping();
+
+        try {
+            // Sauvegarder le message
+            const savedMessage = await ApiManager.saveMessage(messageData);
+            
+            // Mettre à jour le statut du message
+            this.updateMessageStatus(messageData.id, 'sent');
+            
+            // Simuler la livraison et la lecture
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'envoi du message:', error);
+            this.updateMessageStatus(messageData.id, 'failed');
+        }
+    }
+
+    addMessageToInterface(message) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        // Vérifier s'il faut afficher un séparateur de date
+        const lastMessage = messagesContainer.lastElementChild;
+        let showDate = true;
+        
+        if (lastMessage) {
+            const lastMessageDate = new Date(lastMessage.dataset.timestamp || 0);
+            const currentMessageDate = new Date(message.timestamp);
+            showDate = !this.isSameDay(lastMessageDate, currentMessageDate);
+        }
+
+        const messageElement = this.messageManager.createMessageElement(message, showDate);
+        messageElement.dataset.timestamp = message.timestamp;
+        
+        messagesContainer.appendChild(messageElement);
+        this.scrollToBottom();
+    }
+
+    updateMessageStatus(messageId, status) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        const statusElement = messageElement.querySelector('.message-status');
+        if (statusElement) {
+            statusElement.innerHTML = this.messageManager.getMessageStatusIcon(status);
+        }
+    }
+
+    isSameDay(date1, date2) {
+        return date1.toDateString() === date2.toDateString();
     }
 
     async loadMessages() {
-        if (!this.currentChatId || !this.messagesContainer) return;
-        this.showLoadingModal('Chargement des messages...');
+        if (!this.currentChatId) return;
+
         try {
-            const messages = await getMessages(this.currentChatId);
-            this.messagesContainer.innerHTML = '';
+            const messages = await ApiManager.getMessages(this.currentChatId);
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            if (!messagesContainer) return;
+
             if (messages.length === 0) {
-                this.messagesContainer.innerHTML = `
-                    <div class="text-center text-gray-500 text-sm py-4">
-                        <div class="flex items-center justify-center gap-2">
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</span>
-                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                messagesContainer.innerHTML = `
+                    <div class="text-center text-gray-500 text-sm py-8">
+                        <div class="flex items-center justify-center gap-2 mb-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>Vous êtes maintenant connecté avec ${this.currentContact.fullName}</span>
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                         </div>
+                        <p class="text-xs">Les messages sont chiffrés de bout en bout</p>
                     </div>
                 `;
             } else {
-                messages.forEach(message => {
-                    if (message.content) {
-                        this.addMessage(message);
-                    } else if (message.audioUrl) {
-                        this.addVoiceMessage(message);
-                    }
+                messagesContainer.innerHTML = '';
+                
+                messages.forEach((message, index) => {
+                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                    const showDate = !prevMessage || !this.isSameDay(new Date(prevMessage.timestamp), new Date(message.timestamp));
+                    
+                    const messageElement = this.messageManager.createMessageElement(message, showDate);
+                    messageElement.dataset.timestamp = message.timestamp;
+                    messagesContainer.appendChild(messageElement);
                 });
             }
+            
             this.scrollToBottom();
         } catch (error) {
-            this.modalSystem.error('Erreur lors du chargement des messages. Vérifiez votre connexion ou le serveur.');
-        } finally {
-            this.hideLoadingModal();
-        }
-    }
-
-    async handleSendMessage() {
-        const message = this.messageInput.value.trim();
-        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) return;
-
-        if (message) {
-            const messageData = {
-                id: Date.now().toString(),
-                chatId: this.currentChatId,
-                sender: 'me',
-                content: message,
-                timestamp: new Date().toISOString(),
-                status: 'sent'
-            };
-            this.addMessage(messageData);
-            this.messageInput.value = '';
-            this.updateCharCount('');
-            this.simulateTypingIndicator();
-            this.showLoadingModal('Envoi du message...');
-            try {
-                const response = await saveMessage(messageData);
-                if (response && response.id) {
-                    this.hideLoadingModal();
-                    this.modalSystem.success('Message envoyé !');
-                } else {
-                    throw new Error('Réponse inattendue du serveur');
-                }
-            } catch (error) {
-                this.hideLoadingModal();
-                this.modalSystem.error('Erreur lors de l\'envoi. Vérifiez votre connexion ou le serveur.');
-                this.messagesContainer.removeChild(this.messagesContainer.lastChild);
-            }
-        }
-
-        if (this.isRecording) {
-            this.stopRecording();
+            console.error('Erreur lors du chargement des messages:', error);
         }
     }
 
     async startRecording() {
         if (this.isRecording) return;
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.mediaRecorder = new MediaRecorder(stream);
@@ -775,149 +865,174 @@ class ChatSystem {
 
             this.mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                const recordingIndicator = document.getElementById('recordingIndicator');
-                recordingIndicator.classList.add('hidden');
-
-                this.showLoadingModal('Envoi du message vocal...');
-                try {
-                    const response = await saveVoiceMessage(this.currentChatId, audioBlob);
-                    if (response && response.id) {
-                        this.hideLoadingModal();
-                        this.modalSystem.success('Message vocal envoyé !');
-                        this.addVoiceMessage({
-                            id: Date.now().toString(),
-                            chatId: this.currentChatId,
-                            sender: 'me',
-                            timestamp: new Date().toISOString(),
-                            audioUrl: `${API_BASE_URL}/voice-messages/${response.id}.webm`
-                        });
-                    } else {
-                        throw new Error('Réponse inattendue du serveur');
-                    }
-                } catch (error) {
-                    this.hideLoadingModal();
-                    this.modalSystem.error('Erreur lors de l\'envoi vocal. Vérifiez votre serveur.');
-                }
+                await this.sendVoiceMessage(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
-                this.isRecording = false;
-                this.recordBtn.classList.remove('bg-red-700');
             };
 
             this.isRecording = true;
-            this.recordBtn.classList.add('bg-red-700');
-            document.getElementById('recordingIndicator').classList.remove('hidden');
             this.mediaRecorder.start();
+            
+            // Afficher l'indicateur d'enregistrement
+            const indicator = document.getElementById('recordingIndicator');
+            const recordBtn = document.getElementById('recordBtn');
+            
+            if (indicator) indicator.classList.remove('hidden');
+            if (recordBtn) {
+                recordBtn.classList.remove('bg-gray-700');
+                recordBtn.classList.add('bg-red-600');
+            }
+
+            // Démarrer le chronomètre
+            this.startRecordingTimer();
+
         } catch (error) {
-            this.modalSystem.error('Impossible d\'accéder au microphone. Autorisez l\'accès.');
+            console.error('Erreur d\'accès au microphone:', error);
+            alert('Impossible d\'accéder au microphone. Veuillez autoriser l\'accès.');
         }
     }
 
     stopRecording() {
         if (!this.isRecording || !this.mediaRecorder) return;
+
+        this.isRecording = false;
         this.mediaRecorder.stop();
-        this.recordBtn.classList.remove('bg-red-700');
-        document.getElementById('recordingIndicator').classList.add('hidden');
-    }
-
-    addMessage(messageData) {
-        if (!this.messagesContainer) return;
-        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Vous êtes maintenant connecté')) {
-            this.messagesContainer.innerHTML = '';
+        
+        // Masquer l'indicateur d'enregistrement
+        const indicator = document.getElementById('recordingIndicator');
+        const recordBtn = document.getElementById('recordBtn');
+        
+        if (indicator) indicator.classList.add('hidden');
+        if (recordBtn) {
+            recordBtn.classList.add('bg-gray-700');
+            recordBtn.classList.remove('bg-red-600');
         }
-        const messageElement = document.createElement('div');
-        messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
-        messageElement.innerHTML = `
-            <div class="text-white break-words">${messageData.content || 'Message vide'}</div>
-            <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
-            ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
-        `;
-        this.messagesContainer.appendChild(messageElement);
-        this.scrollToBottom();
+
+        this.stopRecordingTimer();
     }
 
-    addVoiceMessage(messageData) {
-        if (!this.messagesContainer) return;
-        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Vous êtes maintenant connecté')) {
-            this.messagesContainer.innerHTML = '';
-        }
-        const messageElement = document.createElement('div');
-        messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
-        messageElement.innerHTML = `
-            <audio controls class="w-full">
-                <source src="${messageData.audioUrl}" type="audio/webm">
-                Votre navigateur ne supporte pas l'audio.
-            </audio>
-            <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
-            ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
-        `;
-        this.messagesContainer.appendChild(messageElement);
-        this.scrollToBottom();
+    startRecordingTimer() {
+        let seconds = 0;
+        this.recordingTimer = setInterval(() => {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            const timeElement = document.getElementById('recordingTime');
+            if (timeElement) {
+                timeElement.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
     }
 
-    simulateTypingIndicator() {
-        if (!this.typingIndicator) return;
-        this.typingIndicator.classList.remove('hidden');
-        setTimeout(() => this.typingIndicator.classList.add('hidden'), 2000);
-    }
-
-    toggleEmojiPanel() {
-        if (!this.emojiPanel) return;
-        this.emojiPanel.classList.toggle('hidden');
-    }
-
-    addEmoji(emoji) {
-        if (!this.messageInput) return;
-        this.messageInput.value += emoji;
-        this.updateCharCount(this.messageInput.value);
-        this.emojiPanel.classList.add('hidden');
-    }
-
-    showAttachmentOptions() {
-        this.modalSystem.info('Option d\'attachement non implémentée.');
-    }
-
-    toggleChatMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        if (contextMenu) {
-            const rect = document.getElementById('chatMenuBtn').getBoundingClientRect();
-            contextMenu.style.left = `${rect.left - 150}px`;
-            contextMenu.style.top = `${rect.bottom + 5}px`;
-            this.navigationSystem.toggleContextMenu();
+    stopRecordingTimer() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
         }
     }
 
-    handleContextMenuAction(action) {
-        switch (action) {
-            case 'Nouveau groupe':
-                this.modalSystem.info('Fonctionnalité "Nouveau groupe" non implémentée.');
-                break;
-            case 'Archiver le chat':
-                this.modalSystem.info('Chat archivé.');
-                break;
-            case 'Épingler le chat':
-                this.modalSystem.info('Chat épinglé.');
-                break;
-            case 'Supprimer le chat':
-                this.modalSystem.confirm('Supprimer le chat', 'Voulez-vous vraiment supprimer ce chat ?', () => this.modalSystem.success('Chat supprimé avec succès.'));
-                break;
-            case 'Se déconnecter':
-                this.logout();
-                break;
-        }
-        this.navigationSystem.hideContextMenu();
-    }
+    async sendVoiceMessage(audioBlob) {
+        const messageData = {
+            id: Date.now().toString(),
+            chatId: this.currentChatId,
+            sender: 'me',
+            type: 'voice',
+            timestamp: new Date().toISOString(),
+            status: 'sending',
+            audioDuration: 15 // Durée simulée
+        };
 
-    logout() {
-        this.modalSystem.confirm('Déconnexion', 'Voulez-vous vous déconnecter ?', () => {
-            this.modalSystem.success('Déconnexion réussie.');
-            setTimeout(() => window.location.href = '/login.html', 1000);
-        }, 'question');
+        this.addMessageToInterface(messageData);
+
+        try {
+            // Ici, vous pourriez uploader le fichier audio
+            // const savedMessage = await ApiManager.saveVoiceMessage(this.currentChatId, audioBlob);
+            
+            // Pour la démo, on simule juste la sauvegarde
+            setTimeout(() => {
+                this.updateMessageStatus(messageData.id, 'sent');
+                setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+                setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+            }, 500);
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'envoi du message vocal:', error);
+            this.updateMessageStatus(messageData.id, 'failed');
+        }
     }
 
     scrollToBottom() {
-        const wrapper = document.getElementById('messagesContainerWrapper');
-        if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    showDefaultView() {
+        const chatArea = document.getElementById('chatArea');
+        if (!chatArea) return;
+
+        chatArea.innerHTML = `
+            <div class="flex-1 bg-gray-800 flex items-center justify-center">
+                <div class="text-center max-w-md">
+                    <div class="mb-8 relative">
+                        <div class="relative mx-auto w-80 h-60">
+                            <svg class="absolute left-0 top-8 z-0" width="320" height="120" viewBox="0 0 320 120" fill="none">
+                                <ellipse cx="160" cy="60" rx="140" ry="55" fill="#23272b"/>
+                            </svg>
+                            
+                            <div class="absolute left-4 top-16 w-20 h-32 rounded-xl border-2 border-teal-200 bg-gray-900 shadow-lg z-20 transform -rotate-12">
+                                <div class="w-full h-full flex flex-col items-center justify-center">
+                                    <div class="w-3 h-3 rounded-full border-2 border-gray-700 mt-2 mb-2"></div>
+                                    <div class="flex flex-col items-center mt-2">
+                                        <div class="flex space-x-0.5 mb-1">
+                                            <div class="w-1 h-2 bg-gray-500 rounded"></div>
+                                            <div class="w-1 h-3 bg-gray-500 rounded"></div>
+                                            <div class="w-1 h-4 bg-gray-500 rounded"></div>
+                                            <div class="w-1 h-5 bg-gray-500 rounded"></div>
+                                        </div>
+                                        <span class="text-red-400 text-lg font-bold -mt-2">×</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="absolute right-2 top-10 w-40 h-28 z-20 transform rotate-3">
+                                <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
+                                    <div class="w-12 h-12 bg-emerald-400 rounded-full flex items-center justify-center">
+                                        <svg width="28" height="28" fill="none" viewBox="0 0 28 28">
+                                            <circle cx="14" cy="14" r="14" fill="#34d399"/>
+                                            <path d="M8 15.5l4 4 8-9" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="w-44 h-3 bg-teal-200 rounded-b-lg -mt-1 mx-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-light text-white mb-4">WhatsApp Web</h2>
+                    <p class="text-gray-300 text-sm leading-relaxed mb-2">
+                        Envoyez et recevez des messages sans avoir à garder votre téléphone connecté.
+                    </p>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                        Utilisez WhatsApp sur un maximum de 4 appareils et 1 téléphone, simultanément.
+                    </p>
+                    
+                    <div class="flex items-center justify-center mt-8 text-gray-400 text-xs">
+                        <i class="fas fa-lock mr-2"></i>
+                        <span>Vos messages personnels sont chiffrés de bout en bout</span>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new ChatSystem());
+// Variables globales
+let chatSystem;
+let messageManager;
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    chatSystem = new ChatSystem();
+    messageManager = chatSystem.messageManager;
+});
