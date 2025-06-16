@@ -493,7 +493,12 @@ class ChatSystem {
     setupEventListeners() {
         this.sendBtn?.addEventListener('click', () => this.handleSendMessage());
         this.messageInput?.addEventListener('input', (e) => this.updateCharCount(e.target.value));
-        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSendMessage());
+        this.messageInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleSendMessage();
+            }
+        });
         this.emojiBtn?.addEventListener('click', () => this.toggleEmojiPanel());
         this.emojiPanel?.addEventListener('click', (e) => e.target.tagName === 'BUTTON' && this.addEmoji(e.target.textContent));
         this.attachBtn?.addEventListener('click', () => this.showAttachmentOptions());
@@ -537,7 +542,7 @@ class ChatSystem {
                             <div class="flex-1">
                                 <div class="flex justify-between items-center">
                                     <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
-                                    <span class="text-gray-500 text-xs">01:33</span>
+                                    <span class="text-gray-500 text-xs">01:40</span>
                                 </div>
                                 <div class="text-gray-400 text-sm">${contact.phone || ''}</div>
                             </div>
@@ -682,13 +687,14 @@ class ChatSystem {
                 </div>
             `;
             this.setupEventListeners();
-            this.loadMessages();
+            await this.loadMessages();
         }
     }
 
     async loadMessages() {
         if (!this.currentChatId || !this.messagesContainer) return;
         try {
+            this.modalSystem.loading('Chargement des messages...');
             const messages = await getMessages(this.currentChatId);
             this.messagesContainer.innerHTML = '';
             if (messages.length === 0) {
@@ -711,23 +717,47 @@ class ChatSystem {
                 });
             }
             this.scrollToBottom();
+            this.modalSystem.hideLoading();
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
             this.modalSystem.error('Erreur lors du chargement des messages.');
         }
     }
 
-    handleSendMessage() {
+    async handleSendMessage() {
         const message = this.messageInput.value.trim();
-        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) return;
+        console.log('Tentative d\'envoi de message:', { message, currentChatId: this.currentChatId });
+        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) {
+            console.log('Envoi annulé: champ vide ou pas de chat sélectionné');
+            return;
+        }
 
         if (message) {
-            const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
+            const messageData = {
+                id: Date.now().toString(),
+                chatId: this.currentChatId,
+                sender: 'me',
+                content: message,
+                timestamp: new Date().toISOString(),
+                status: 'sent'
+            };
+            console.log('Ajout du message localement:', messageData);
             this.addMessage(messageData);
             this.messageInput.value = '';
             this.updateCharCount('');
             this.simulateTypingIndicator();
-            saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
+            try {
+                this.modalSystem.loading('Envoi du message...');
+                await saveMessage(messageData);
+                console.log('Message sauvegardé avec succès:', messageData);
+                this.modalSystem.hideLoading();
+                this.modalSystem.success('Message envoyé !');
+            } catch (error) {
+                console.error('Erreur lors de l\'envoi du message:', error);
+                this.modalSystem.error('Erreur lors de l\'envoi du message.');
+                // Optionnel : Supprimer le message local si l'envoi échoue
+                this.messagesContainer.removeChild(this.messagesContainer.lastChild);
+            }
         }
 
         if (this.isRecording) {
@@ -791,7 +821,7 @@ class ChatSystem {
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
-            <div class="text-white break-words">${messageData.content}</div>
+            <div class="text-white break-words">${messageData.content || 'Message vide'}</div>
             <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
             ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
         `;
