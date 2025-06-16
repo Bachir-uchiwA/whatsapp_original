@@ -93,7 +93,7 @@
         .emoji-picker {
             position: absolute;
             bottom: 70px;
-            right: 20px;
+            left: 20px;
             background: #2a2f32;
             border-radius: 12px;
             padding: 16px;
@@ -101,6 +101,7 @@
             z-index: 1000;
             max-height: 300px;
             overflow-y: auto;
+            width: 300px;
         }
         
         .emoji-grid {
@@ -115,6 +116,7 @@
             transition: background-color 0.2s;
             cursor: pointer;
             font-size: 20px;
+            text-align: center;
         }
         
         .emoji-btn:hover {
@@ -140,64 +142,6 @@
             background: #25d366;
             border-radius: 2px;
             transition: height 0.1s;
-        }
-        
-        .message-reactions {
-            position: absolute;
-            bottom: -15px;
-            right: 10px;
-            display: flex;
-            gap: 4px;
-        }
-        
-        .reaction {
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 12px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 2px;
-        }
-        
-        .message-menu {
-            position: absolute;
-            top: 0;
-            right: -40px;
-            background: #2a2f32;
-            border-radius: 8px;
-            padding: 4px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s;
-        }
-        
-        .message-bubble:hover .message-menu {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .quick-reactions {
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #2a2f32;
-            border-radius: 25px;
-            padding: 8px 12px;
-            display: flex;
-            gap: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s;
-        }
-        
-        .message-bubble:hover .quick-reactions {
-            opacity: 1;
-            visibility: visible;
         }
         
         .date-separator {
@@ -318,52 +262,57 @@
 
         <!-- Zone de chat principale -->
         <div class="flex-1 flex flex-col bg-gray-800" id="chatArea">
-            <div class="flex-1 bg-gray-800 flex items-center justify-center">
-                <div class="text-center max-w-md">
-                    <div class="mb-8 relative">
-                        <div class="relative mx-auto w-80 h-60">
-                            <svg class="absolute left-0 top-8 z-0" width="320" height="120" viewBox="0 0 320 120" fill="none">
-                                <ellipse cx="160" cy="60" rx="140" ry="55" fill="#23272b"/>
-                            </svg>
-                            
-                            <div class="absolute left-4 top-16 w-20 h-32 rounded-xl border-2 border-teal-200 bg-gray-900 shadow-lg z-20 transform -rotate-12">
-                                <div class="w-full h-full flex flex-col items-center justify-center">
-                                    <div class="w-3 h-3 rounded-full border-2 border-gray-700 mt-2 mb-2"></div>
-                                    <div class="flex flex-col items-center mt-2">
-                                        <div class="flex space-x-0.5 mb-1">
-                                            <div class="w-1 h-2 bg-gray-500 rounded"></div>
-                                            <div class="w-1 h-3 bg-gray-500 rounded"></div>
-                                            <div class="w-1 h-4 bg-gray-500 rounded"></div>
-                                            <div class="w-1 h-5 bg-gray-500 rounded"></div>
-                                        </div>
-                                        <span class="text-red-400 text-lg font-bold -mt-2">×</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="absolute right-2 top-10 w-40 h-28 z-20 transform rotate-3">
-                                <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
-                                    <div class="w-12 h-12 bg-emerald-400 rounded-full flex items-center justify-center">
-                                        <svg width="28" height="28" fill="none" viewBox="0 0 28 28">
-                                            <circle cx="14" cy="14" r="14" fill="#34d399"/>
-                                            <path d="M8 15.5l4 4 8-9" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="w-44 h-3 bg-teal-200 rounded-b-lg -mt-1 mx-auto"></div>
-                            </div>
+            <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700" id="chatHeader">
+                <!-- Rempli dynamiquement par JS -->
+            </div>
+
+            <div class="flex-1 overflow-y-auto scrollbar-thin p-4" id="messagesContainer">
+                <!-- Messages chargés dynamiquement -->
+            </div>
+
+            <div class="bg-gray-900 p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <button id="emojiBtn" class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Emoji">
+                        <i class="far fa-smile text-xl"></i>
+                    </button>
+                    
+                    <button id="attachBtn" class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Pièce jointe">
+                        <i class="fas fa-paperclip text-xl"></i>
+                    </button>
+
+                    <div class="flex-1 relative">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Tapez un message..." 
+                            class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                        />
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                            <span id="charCount">0</span>/4096
                         </div>
                     </div>
-                    
-                    <h2 class="text-2xl font-light text-white mb-4">WhatsApp Web</h2>
-                    <p class="text-gray-300 text-sm leading-relaxed mb-2">
-                        Envoyez et recevez des messages sans avoir à garder votre téléphone connecté.
-                    </p>
-                    <p class="text-gray-300 text-sm leading-relaxed">
-                        Utilisez WhatsApp sur un maximum de 4 appareils et 1 téléphone, simultanément.
-                    </p>
-                    
-                    <div class="flex items-center justify-center mt-8 text-gray-400 text-xs">
-                        <i class="fas fa-lock mr-2"></i>
-                        <span>Vos messages personnels sont chiffrés de bout en bout</span>
-                    </div>
+
+                    <button id="sendBtn" class="p-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition-colors hidden" title="Envoyer">
+                        <i class="fas fa-paper-plane text-xl"></i>
+                    </button>
+
+                    <button id="recordBtn" class="p-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-full transition-colors" title="Message vocal">
+                        <i class="fas fa-microphone text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="recordingIndicator" class="hidden text-red-400 text-sm mt-2 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    <span>Enregistrement en cours...</span>
+                    <span id="recordingTime">0:00</span>
+                </div>
+
+                <div id="emojiPicker" class="emoji-picker hidden">
+                    <div id="emojiGrid" class="emoji-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="chat.js"></script>
+</body>
+</html>
