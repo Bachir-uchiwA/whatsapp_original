@@ -38,6 +38,17 @@ async function getMessages(chatId = null) {
     return await apiRequest(endpoint);
 }
 
+async function saveVoiceMessage(chatId, audioData) {
+    const formData = new FormData();
+    formData.append('chatId', chatId);
+    formData.append('audio', audioData, 'voice_message.webm');
+    return await apiRequest('/voice-messages', {
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': undefined } // Permet à fetch de gérer FormData
+    });
+}
+
 class ModalSystem {
     constructor() {
         this.modal = document.getElementById('modal');
@@ -205,7 +216,6 @@ class ModalSystem {
                 this.showToast(`Nouveau contact : ${contactData.fullName}`, 'success');
                 this.hideNewContactFormInPreview();
                 this.showNewChatInPreview();
-                // Mettre à jour la liste des contacts en temps réel
                 const chatSystem = window.WhatsAppSystems?.chatSystem;
                 if (chatSystem) {
                     await chatSystem.updateContactsList();
@@ -474,12 +484,15 @@ class ChatSystem {
         this.setupEventListeners();
         this.loadInitialData();
         this.showDefaultView();
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
     }
 
     setupEventListeners() {
-        this.sendBtn?.addEventListener('click', () => this.handleSend());
+        this.sendBtn?.addEventListener('click', () => this.handleSendOrRecord());
         this.messageInput?.addEventListener('input', (e) => this.updateCharCount(e.target.value));
-        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSend());
+        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSendOrRecord());
         this.emojiBtn?.addEventListener('click', () => this.toggleEmojiPanel());
         this.emojiPanel?.addEventListener('click', (e) => e.target.tagName === 'BUTTON' && this.addEmoji(e.target.textContent));
         this.attachBtn?.addEventListener('click', () => this.showAttachmentOptions());
@@ -607,7 +620,7 @@ class ChatSystem {
     updateCharCount(text) {
         const count = text.length;
         this.charCount.textContent = `${count}`;
-        if (count > 0) {
+        if (count > 0 || this.isRecording) {
             this.sendIcon.className = 'fas fa-paper-plane text-xl';
         } else {
             this.sendIcon.className = 'fas fa-microphone text-xl';
@@ -686,7 +699,13 @@ class ChatSystem {
                     </div>
                 `;
             } else {
-                messages.forEach(message => this.addMessage(message));
+                messages.forEach(message => {
+                    if (message.content) {
+                        this.addMessage(message);
+                    } else if (message.audio) {
+                        this.addVoiceMessage(message);
+                    }
+                });
             }
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         } catch (error) {
@@ -695,15 +714,76 @@ class ChatSystem {
         }
     }
 
+    handleSendOrRecord() {
+        if (this.isRecording) {
+            this.stopRecording();
+        } else if (this.messageInput.value.trim() || this.audioChunks.length > 0) {
+            this.handleSend();
+        } else {
+            this.startRecording();
+        }
+    }
+
+    async startRecording() {
+        if (this.isRecording) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                this.audioChunks.push(event.data);
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                this.modalSystem.loading('Envoi du message vocal...');
+                try {
+                    await saveVoiceMessage(this.currentChatId, audioBlob);
+                    this.modalSystem.hideLoading();
+                    this.modalSystem.success('Message vocal envoyé !');
+                    this.addVoiceMessage({ id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', timestamp: new Date().toISOString() });
+                } catch (error) {
+                    console.error('Erreur lors de l\'envoi du message vocal:', error);
+                    this.modalSystem.error('Erreur lors de l\'envoi du message vocal.');
+                }
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            this.isRecording = true;
+            this.sendIcon.className = 'fas fa-stop text-xl';
+            this.mediaRecorder.start();
+            this.modalSystem.info('Enregistrement en cours...');
+        } catch (error) {
+            console.error('Erreur lors de l\'accès au microphone:', error);
+            this.modalSystem.error('Impossible d\'accéder au microphone.');
+        }
+    }
+
+    stopRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+        this.mediaRecorder.stop();
+        this.isRecording = false;
+        this.sendIcon.className = 'fas fa-microphone text-xl';
+        this.modalSystem.hideModal();
+    }
+
     handleSend() {
         const message = this.messageInput.value.trim();
-        if (!message || !this.currentChatId || !this.messagesContainer) return;
-        const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
-        this.addMessage(messageData);
-        this.messageInput.value = '';
-        this.updateCharCount('');
-        this.simulateTypingIndicator();
-        saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
+        if (!message && this.audioChunks.length === 0 || !this.currentChatId || !this.messagesContainer) return;
+        
+        if (message) {
+            const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
+            this.addMessage(messageData);
+            this.messageInput.value = '';
+            this.updateCharCount('');
+            this.simulateTypingIndicator();
+            saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
+        }
+
+        if (this.audioChunks.length > 0) {
+            this.stopRecording();
+        }
     }
 
     addMessage(messageData) {
@@ -715,6 +795,21 @@ class ChatSystem {
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
             <div class="text-white">${messageData.content}</div>
+            <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
+        `;
+        this.messagesContainer.appendChild(messageElement);
+        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    }
+
+    addVoiceMessage(messageData) {
+        if (!this.messagesContainer) return;
+        if (this.messagesContainer.children.length === 1 && this.messagesContainer.firstChild.textContent.includes('Vous êtes maintenant connecté')) {
+            this.messagesContainer.innerHTML = '';
+        }
+        const messageElement = document.createElement('div');
+        messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
+        messageElement.innerHTML = `
+            <audio controls src="${API_BASE_URL}/voice-messages/${messageData.id}.webm"></audio>
             <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
         `;
         this.messagesContainer.appendChild(messageElement);
