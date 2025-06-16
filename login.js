@@ -9,7 +9,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const submitBtn = document.getElementById('submit-btn');
     const spinner = document.getElementById('spinner');
     const messageDiv = document.getElementById('message');
-    const apiUrl = "https://projet-json-server-4.onrender.com";
+    const apiUrl = "https://projet-json-server-7.onrender.com";
 
     // Afficher le spinner, cacher le message, désactiver le bouton
     spinner.classList.remove('hidden');

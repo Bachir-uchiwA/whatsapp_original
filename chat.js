@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://projet-json-server-7b.onrender.com';
+const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
 async function apiRequest(endpoint, options = {}) {
     try {

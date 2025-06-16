@@ -1,4 +1,4 @@
-const apiUrl = "https://projet-json-server-4.onrender.com";
+const apiUrl = "https://projet-json-server-7.onrender.com";
 
 export async function checkAuth() {
     // Get session ID from URL
