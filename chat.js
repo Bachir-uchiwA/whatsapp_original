@@ -1,853 +1,537 @@
-const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
+const API_BASE_URL = 'https://projet-json-server-7b.onrender.com';
 
-// Adding CSS styles for messages and emoji picker
-const style = document.createElement('style');
-style.textContent = `
-    .message-group { max-width: 100%; }
-    .message-bubble {
-        max-width: 70%;
-        border-radius: 12px;
-        position: relative;
-        color: #fff;
-    }
-    .message-bubble.own {
-        background: #056162;
-        margin-left: auto;
-    }
-    .message-bubble.other {
-        background: #262d31;
-    }
-    .message-time {
-        font-size: 0.75rem;
-        color: #a0aec0;
-        text-align: right;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 4px;
-    }
-    .message-status {
-        display: inline-flex;
-        align-items: center;
-    }
-    .date-separator {
-        text-align: center;
-        margin: 16px 0;
-    }
-    .date-separator span {
-        background: #2d3748;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        color: #a0aec0;
-    }
-    .voice-message, .audio-message {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .voice-waveform {
-        display: flex;
-        gap: 2px;
-        align-items: center;
-        flex-grow: 1;
-    }
-    .wave-bar {
-        width: 3px;
-        background: #a0aec0;
-        border-radius: 2px;
-    }
-    .emoji-btn {
-        font-size: 1.5rem;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-    }
-    .emoji-btn:hover {
-        background: #4a5568;
-        border-radius: 4px;
-    }
-    .audio-player {
-        width: 200px;
-    }
-`;
-document.head.appendChild(style);
+async function apiRequest(endpoint, options = {}) {
+    try {
+        const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: { ...options.headers, ...headers },
+            ...options,
+            credentials: 'omit'
+        });
 
-// Système de gestion des API
-class ApiManager {
-    static async request(endpoint, options = {}) {
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    ...options.headers 
-                },
-                ...options,
-                credentials: 'omit'
-            });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
         }
-    }
-
-    static async getContacts() {
-        return await this.request('/contacts');
-    }
-
-    static async addContact(contactData) {
-        return await this.request('/contacts', {
-            method: 'POST',
-            body: JSON.stringify(contactData)
-        });
-    }
-
-    static async getMessages(chatId = null) {
-        const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
-        return await this.request(endpoint);
-    }
-
-    static async saveMessage(messageData) {
-        return await this.request('/messages', { 
-            method: 'POST', 
-            body: JSON.stringify(messageData) 
-        });
-    }
-
-    static async updateMessageStatus(messageId, status) {
-        return await this.request(`/messages/${messageId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ status })
-        });
-    }
-
-    static async deleteSession() {
-        return await this.request('/sessions/1', {
-            method: 'DELETE'
-        });
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
     }
 }
 
-// Système de gestion des emojis
-class EmojiManager {
+async function saveContact(contactData) {
+    return await apiRequest('/contacts', { method: 'POST', body: JSON.stringify(contactData) });
+}
+
+async function getContacts() {
+    return await apiRequest('/contacts');
+}
+
+async function saveMessage(messageData) {
+    return await apiRequest('/messages', { method: 'POST', body: JSON.stringify(messageData) });
+}
+
+async function getMessages(chatId = null) {
+    const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
+    return await apiRequest(endpoint);
+}
+
+async function saveVoiceMessage(chatId, metadata) {
+    const voiceMessageData = {
+        id: Date.now().toString(),
+        chatId,
+        duration: metadata.duration || 10,
+        timestamp: new Date().toISOString(),
+        audioUrl: `https://example.com/voice-messages/${Date.now()}.webm`
+    };
+    return await apiRequest('/voice-messages', {
+        method: 'POST',
+        body: JSON.stringify(voiceMessageData)
+    });
+}
+
+class ModalSystem {
     constructor() {
-        this.emojis = {
-            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇'],
-            gestures: ['👍', '👎', '👌', '✌️', '🤞', '🤘', '🤙', '👈', '👉', '👆'],
-            hearts: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔']
-        };
-        this.currentCategory = 'smileys';
-        this.isVisible = false;
-        this.init();
-    }
-
-    init() {
-        this.createEmojiPicker();
+        this.modal = document.getElementById('modal');
+        this.confirmModal = document.getElementById('confirm-modal');
+        this.loadingModal = document.getElementById('loading-modal');
+        this.tempPreview = document.getElementById('tempPreview');
+        this.currentView = null;
         this.setupEventListeners();
-    }
-
-    createEmojiPicker() {
-        const picker = document.getElementById('emojiPicker');
-        if (!picker) return;
-
-        const categories = document.createElement('div');
-        categories.className = 'flex gap-2 mb-3 border-b border-gray-600 pb-2';
-        
-        Object.keys(this.emojis).forEach(category => {
-            const tab = document.createElement('button');
-            tab.className = `px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                category === this.currentCategory ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`;
-            tab.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-            tab.onclick = () => this.switchCategory(category);
-            categories.appendChild(tab);
-        });
-
-        picker.appendChild(categories);
-        this.updateEmojiGrid();
-    }
-
-    switchCategory(category) {
-        this.currentCategory = category;
-        this.updateEmojiGrid();
-        const tabs = document.querySelectorAll('#emojiPicker button');
-        tabs.forEach(tab => {
-            tab.className = `px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                tab.textContent.toLowerCase() === category ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`;
-        });
-    }
-
-    updateEmojiGrid() {
-        const grid = document.getElementById('emojiGrid');
-        if (!grid) return;
-
-        grid.innerHTML = '';
-        this.emojis[this.currentCategory].forEach(emoji => {
-            const button = document.createElement('button');
-            button.className = 'emoji-btn';
-            button.textContent = emoji;
-            button.onclick = () => this.selectEmoji(emoji);
-            grid.appendChild(button);
-        });
-    }
-
-    selectEmoji(emoji) {
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            const cursorPos = messageInput.selectionStart;
-            messageInput.value = messageInput.value.substring(0, cursorPos) + emoji + messageInput.value.substring(cursorPos);
-            messageInput.focus();
-            messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
-            messageInput.dispatchEvent(new Event('input'));
-        }
-        this.hide();
-    }
-
-    show() {
-        const picker = document.getElementById('emojiPicker');
-        if (picker) {
-            picker.classList.remove('hidden');
-            this.isVisible = true;
-            const rect = picker.getBoundingClientRect();
-            if (rect.right > window.innerWidth) {
-                picker.style.left = 'auto';
-                picker.style.right = '0';
-            }
-        }
-    }
-
-    hide() {
-        const picker = document.getElementById('emojiPicker');
-        if (picker) {
-            picker.classList.add('hidden');
-            this.isVisible = false;
-        }
-    }
-
-    toggle() {
-        this.isVisible ? this.hide() : this.show();
     }
 
     setupEventListeners() {
-        document.addEventListener('click', (e) => {
-            const picker = document.getElementById('emojiPicker');
-            const emojiBtn = document.getElementById('emojiBtn');
-            if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
-                this.hide();
-            }
+        document.getElementById('modal-close')?.addEventListener('click', () => this.hideModal());
+        document.getElementById('confirm-cancel')?.addEventListener('click', () => this.hideConfirmModal());
+        [this.modal, this.confirmModal, this.loadingModal].forEach(modal => {
+            modal?.addEventListener('click', (e) => e.target === modal && this.hideAllModals());
         });
-    }
-}
-
-// Système de gestion des messages
-class MessageManager {
-    constructor() {
-        this.messages = new Map();
-        this.currentChatId = null;
+        document.addEventListener('keydown', (e) => e.key === 'Escape' && this.hideAllModals());
     }
 
-    formatTime(timestamp) {
-        return new Date(timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    showModal(message, type = 'info') {
+        const messageEl = document.getElementById('modal-message');
+        const iconEl = document.getElementById('modal-icon');
+        if (!messageEl || !iconEl) return;
+        messageEl.textContent = message;
+        const icons = {
+            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"><i class="fas fa-check text-white text-xl"></i></div>',
+            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-times text-white text-xl"></i></div>',
+            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
+            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-info text-white text-xl"></i></div>'
+        };
+        iconEl.innerHTML = icons[type] || icons.info;
+        this.modal.classList.remove('hidden');
+        this.modal.classList.add('animate-fade-in');
+        if (type === 'success') setTimeout(() => this.hideModal(), 3000);
     }
 
-    formatDate(timestamp) {
-        const date = new Date(timestamp);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        if (date.toDateString() === today.toDateString()) return "Aujourd'hui";
-        if (date.toDateString() === yesterday.toDateString()) return "Hier";
-        return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    hideModal() {
+        this.modal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.modal.classList.add('hidden');
+            this.modal.classList.remove('animate-fade-in', 'animate-fade-out');
+        }, 200);
     }
 
-    getMessageStatusIcon(status) {
-        switch (status) {
-            case 'sending': return '<i class="fas fa-clock text-gray-400 text-xs"></i>';
-            case 'sent': return '<i class="fas fa-check text-gray-400 text-xs"></i>';
-            case 'delivered': return '<i class="fas fa-check-double text-gray-400 text-xs"></i>';
-            case 'read': return '<i class="fas fa-check-double text-blue-400 text-xs"></i>';
-            default: return '';
-        }
+    showConfirmModal(title, message, onConfirm, type = 'warning') {
+        const titleEl = document.getElementById('confirm-title');
+        const messageEl = document.getElementById('confirm-message');
+        const iconEl = document.getElementById('confirm-icon');
+        const confirmBtn = document.getElementById('confirm-ok');
+        if (!titleEl || !messageEl || !iconEl || !confirmBtn) return;
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        const icons = {
+            danger: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-white text-xl"></i></div>',
+            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
+            question: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-question text-white text-xl"></i></div>'
+        };
+        iconEl.innerHTML = icons[type] || icons.warning;
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', () => { this.hideConfirmModal(); onConfirm && onConfirm(); });
+        this.confirmModal.classList.remove('hidden');
+        this.confirmModal.classList.add('animate-fade-in');
     }
 
-    createMessageElement(message, showDate = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message-group mb-4';
-        messageDiv.dataset.messageId = message.id;
-        messageDiv.dataset.timestamp = message.timestamp;
+    hideConfirmModal() {
+        this.confirmModal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.confirmModal.classList.add('hidden');
+            this.confirmModal.classList.remove('animate-fade-in', 'animate-fade-out');
+        }, 200);
+    }
 
-        let html = showDate ? `
-            <div class="date-separator">
-                <span>${this.formatDate(message.timestamp)}</span>
-            </div>
-        ` : '';
+    showLoadingModal(message = 'Chargement...') {
+        const messageEl = document.getElementById('loading-message');
+        if (!messageEl) return;
+        messageEl.textContent = message;
+        this.loadingModal.classList.remove('hidden');
+        this.loadingModal.classList.add('animate-scale-in');
+    }
 
-        const isOwn = message.sender === 'me';
-        html += `
-            <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2">
-                <div class="message-bubble ${isOwn ? 'own' : 'other'} p-3">
-                    ${this.renderMessageContent(message)}
-                    <div class="message-time">
-                        ${this.formatTime(message.timestamp)}
-                        ${isOwn ? `<span class="message-status">${this.getMessageStatusIcon(message.status)}</span>` : ''}
+    hideLoadingModal() {
+        this.loadingModal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.loadingModal.classList.add('hidden');
+            this.loadingModal.classList.remove('animate-scale-in', 'animate-fade-out');
+        }, 200);
+    }
+
+    hideAllModals() {
+        this.hideModal();
+        this.hideConfirmModal();
+        this.hideLoadingModal();
+        this.hideNewContactFormInPreview();
+        this.hideNewChatInPreview();
+        this.hideSettingsInPreview();
+    }
+
+    showNewContactFormInPreview() {
+        this.currentView = 'newContact';
+        const newContactHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4 animate-slide-up">
+                <div class="flex items-center mb-4">
+                    <button id="newContactBack" class="text-gray-400 hover:text-white text-2xl mr-4">←</button>
+                    <h2 class="text-white text-lg font-semibold">Nouveau contact</h2>
+                </div>
+                <div class="flex-1 space-y-4 overflow-y-auto">
+                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none placeholder-gray-400">
+                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none">
+                    <div class="flex items-center">
+                        <select id="contactCountryCode" class="w-24 p-2 bg-gray-800 rounded-l-lg focus:outline-none">
+                            <option value="+221">SN +221</option>
+                            <option value="+33">FR +33</option>
+                            <option value="+1">US +1</option>
+                            <option value="+44">UK +44</option>
+                        </select>
+                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="flex-1 p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none">
                     </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="syncContact" class="w-5 h-5 text-green-500 bg-gray-800 rounded">
+                        <label for="syncContact" class="text-gray-300 text-sm">Synchroniser le contact sur le téléphone</label>
+                    </div>
+                    <button id="saveContactBtn" class="w-full bg-green-600 text-white p-2 rounded-lg">Enregistrer</button>
+                    <p class="text-gray-500 text-xs text-center">Ce contact sera ajouté au carnet d'adresses.</p>
                 </div>
             </div>
         `;
-
-        messageDiv.innerHTML = html;
-        return messageDiv;
-    }
-
-    renderMessageContent(message) {
-        switch (message.type) {
-            case 'text':
-                return `<div class="break-words">${message.content}</div>`;
-            case 'voice':
-            case 'audio':
-                return `
-                    <div class="${message.type}-message">
-                        <button class="play-btn w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white" data-message-id="${message.id}" data-playing="false">
-                            <i class="fas fa-play text-xs"></i>
-                        </button>
-                        <div class="voice-waveform">${this.generateWaveform()}</div>
-                        <span class="text-xs text-gray-600">${this.formatDuration(message.audioDuration || 10)}</span>
-                    </div>
-                `;
-            default:
-                return `<div class="break-words">Type non supporté</div>`;
-        }
-    }
-
-    generateWaveform() {
-        let waveform = '';
-        for (let i = 0; i < 15; i++) {
-            const height = Math.random() * 15 + 5;
-            waveform += `<div class="wave-bar" style="height: ${height}px;"></div>`;
-        }
-        return waveform;
-    }
-
-    formatDuration(seconds) {
-        const min = Math.floor(seconds / 60);
-        const sec = seconds % 60;
-        return `${min}:${sec.toString().padStart(2, '0')}`;
-    }
-
-    async playAudioMessage(messageId) {
-        try {
-            const messages = await ApiManager.getMessages(this.currentChatId);
-            const message = messages.find(m => m.id === messageId);
-            if (!message || !message.audioData) throw new Error('Audio non trouvé');
-
-            const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-            const playBtn = messageElement.querySelector('.play-btn');
-            const isPlaying = playBtn.dataset.playing === 'true';
-
-            if (isPlaying) {
-                const audio = document.getElementById(`audio-${messageId}`);
-                if (audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    playBtn.dataset.playing = 'false';
-                    playBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
-                }
+        this.tempPreview.innerHTML = newContactHTML;
+        this.tempPreview.style.display = 'flex';
+        document.getElementById('newContactBack')?.addEventListener('click', () => {
+            if (this.currentView === 'newContact') {
+                this.hideNewContactFormInPreview();
+                this.showNewChatInPreview();
+            }
+        });
+        document.getElementById('saveContactBtn')?.addEventListener('click', async () => {
+            const firstName = document.getElementById('contactFirstName').value.trim();
+            const lastName = document.getElementById('contactLastName').value.trim();
+            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
+            const sync = document.getElementById('syncContact').checked;
+            if (!firstName || !lastName || !phone) {
+                this.showModal('Veuillez remplir tous les champs.', 'warning');
                 return;
             }
-
-            let audio = document.getElementById(`audio-${messageId}`);
-            if (!audio) {
-                audio = document.createElement('audio');
-                audio.id = `audio-${messageId}`;
-                audio.src = message.audioData;
-                audio.style.display = 'none';
-                messageElement.appendChild(audio);
+            const phoneRegex = /^[\+]?[0-9]+$/;
+            if (!phoneRegex.test(phone)) {
+                this.showModal('Numéro de téléphone invalide.', 'warning');
+                return;
             }
-
-            audio.play();
-            playBtn.dataset.playing = 'true';
-            playBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
-
-            audio.onended = () => {
-                playBtn.dataset.playing = 'false';
-                playBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
+            const contactData = {
+                id: Date.now().toString(),
+                firstName,
+                lastName,
+                fullName: `${firstName} ${lastName}`,
+                phone,
+                country: phone.slice(1, 4),
+                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
+                createdAt: new Date().toISOString()
             };
-        } catch (error) {
-            console.error('Erreur de lecture:', error);
-            chatSystem.showToast('Impossible de lire le message audio', 'error');
-        }
+            this.showLoadingModal('Ajout de contact...');
+            try {
+                await saveContact(contactData);
+                this.hideLoadingModal();
+                this.showModal('Contact ajouté avec succès !', 'success');
+                this.hideNewContactFormInPreview();
+                this.showNewChatInPreview();
+                await window.WhatsAppSystems?.chatSystem?.updateContactsList();
+            } catch (error) {
+                this.hideLoadingModal();
+                this.showModal('Erreur lors de l\'ajout du contact.', 'error');
+            }
+        });
+    }
+
+    hideNewContactFormInPreview() {
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
+        this.currentView = null;
+    }
+
+    showSettingsInPreview() {
+        this.currentView = 'settings';
+        const settingsHTML = `
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col animate-slide-up">
+                <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
+                    <input type="text" placeholder="Rechercher dans les paramètres" class="w-3/4 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none">
+                </div>
+                <div class="flex flex-col items-center py-6 border-b border-gray-800">
+                    <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-2 border-gray-700">
+                    <p class="text-white font-bold mt-4">Bachir_deV</p>
+                    <p class="text-gray-400 text-xs mt-2">Salut ! J'utilise WhatsApp.</p>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <ul>
+                        <li><a href="#" class="block p-4">Compte</a></li>
+                        <li><a href="#" class="block p-4">Confidentialité</a></li>
+                        <li><a href="#" class="block p-4">Chats</a></li>
+                        <li><a href="#" class="block p-4">Notifications</a></li>
+                        <li><a href="#" class="block p-4">Aide</a></li>
+                        <li><a href="#" id="settingsLogoutBtn" class="block p-4 text-red-500">Déconnexion</a></li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        this.tempPreview.innerHTML = settingsHTML;
+        this.tempPreview.style.display = 'flex';
+        document.getElementById('settingsLogoutBtn')?.addEventListener('click', () => {
+            window.WhatsAppSystems?.chatSystem?.logout();
+        });
+    }
+
+    hideSettingsInPreview() {
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
+        this.currentView = null;
+    }
+
+    showNewChatInPreview() {
+        this.currentView = 'newChat';
+        this.showLoadingModal('Chargement des contacts...');
+        getContacts().then(contacts => {
+            this.hideLoadingModal();
+            const newChatHTML = `
+                <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4 animate-slide-up">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-white text-lg">Nouvelle discussion</h2>
+                        <button id="closePreviewBtn" class="text-gray-400 hover:text-white">×</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <button id="newContactBtn" class="block p-2">Nouveau contact</button>
+                        ${contacts.map(c => `<div class="p-2">${c.fullName}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+            this.tempPreview.innerHTML = newChatHTML;
+            this.tempPreview.style.display = 'flex';
+            document.getElementById('closePreviewBtn')?.addEventListener('click', () => this.hideNewChatInPreview());
+            document.getElementById('newContactBtn')?.addEventListener('click', () => this.showNewContactFormInPreview());
+        }).catch(() => {
+            this.hideLoadingModal();
+            this.showModal('Erreur de chargement des contacts.', 'error');
+        });
+    }
+
+    hideNewChatInPreview() {
+        this.tempPreview.style.display = 'none';
+        this.tempPreview.innerHTML = '';
+        this.currentView = null;
     }
 }
 
-// Système principal de chat
 class ChatSystem {
-    constructor() {
+    constructor(modalSystem) {
+        this.modalSystem = modalSystem;
         this.currentChatId = null;
         this.currentContact = null;
-        this.messageManager = new MessageManager();
-        this.emojiManager = new EmojiManager();
-        this.isRecording = false;
+        this.messagesContainer = document.getElementById('messagesContainer');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendBtn = document.getElementById('sendBtn');
+        this.recordBtn = document.getElementById('recordBtn');
+        this.callBtn = document.getElementById('callBtn');
+        this.searchBtn = document.getElementById('searchBtn');
+        this.optionsBtn = document.getElementById('optionsBtn');
+        this.optionsMenu = document.getElementById('chatOptionsMenu');
+        this.searchBarEl = document.getElementById('searchBar');
+        this.searchInput = document.getElementById('searchInput');
         this.mediaRecorder = null;
         this.audioChunks = [];
-        this.pollingInterval = null;
-        this.confirmCallback = null;
-        this.recordingStartTime = null;
-        this.init();
+        this.isRecording = false;
+        this.setupEventListeners();
+        this.loadContacts();
+        this.pollMessages();
     }
 
-    async init() {
+    setupEventListeners() {
+        this.sendBtn?.addEventListener('click', () => this.handleSendMessage());
+        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleSendMessage());
+        this.recordBtn?.addEventListener('click', () => this.toggleRecording());
+        this.callBtn?.addEventListener('click', () => this.modalSystem.showModal('Appel non implémenté.', 'info'));
+        this.searchBtn?.addEventListener('click', () => this.toggleSearch());
+        this.optionsBtn?.addEventListener('click', () => this.toggleOptionsMenu());
+        this.searchInput?.addEventListener('input', () => this.handleSearch());
+        document.getElementById('newChatBtn')?.addEventListener('click', () => this.modalSystem.showNewChatInPreview());
+        document.getElementById('menuBtn')?.addEventListener('click', () => this.toggleContextMenu());
+        document.getElementById('settingsIcon')?.addEventListener('click', () => this.modalSystem.showSettingsInPreview());
+        document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+        document.getElementById('settingsLogout')?.addEventListener('click', () => this.logout());
+        document.addEventListener('click', (e) => {
+            if (!this.optionsMenu.contains(e.target) && !this.optionsBtn.contains(e.target)) {
+                this.optionsMenu.classList.add('hidden');
+            }
+            if (!document.getElementById('contextMenu').contains(e.target) && !document.getElementById('menuBtn').contains(e.target)) {
+                this.hideContextMenu();
+            }
+        });
+    }
+
+    toggleSearch() {
+        this.searchBarEl.classList.toggle('hidden');
+        if (!this.searchBarEl.classList.contains('hidden')) {
+            this.searchInput.focus();
+        } else {
+            this.searchInput.value = '';
+            this.loadMessages();
+        }
+    }
+
+    handleSearch() {
+        const query = this.searchInput.value.toLowerCase();
+        const messages = document.querySelectorAll('#messagesContainer > div');
+        messages.forEach(msg => {
+            const content = msg.querySelector('p')?.textContent.toLowerCase() || '';
+            msg.style.display = content.includes(query) ? '' : 'none';
+        });
+    }
+
+    toggleOptionsMenu() {
+        this.optionsMenu.classList.toggle('hidden');
+    }
+
+    toggleContextMenu() {
+        const contextMenu = document.getElementById('contextMenu');
+        contextMenu.classList.toggle('hidden');
+    }
+
+    hideContextMenu() {
+        document.getElementById('contextMenu').classList.add('hidden');
+    }
+
+    async updateContactsList() {
         await this.loadContacts();
-        this.setupEventListeners();
-        this.showDefaultView();
     }
 
     async loadContacts() {
         try {
-            const contacts = await ApiManager.getContacts();
-            this.renderContactsList(contacts);
-            this.renderNewChatContactsList(contacts);
+            const contacts = await getContacts();
+            const contactsList = document.getElementById('contactsList');
+            contactsList.innerHTML = contacts.map(contact => `
+                <div class="contact-item p-3 hover:bg-gray-800 cursor-pointer flex items-center" data-contact-id="${contact.id}">
+                    <div class="bg-blue-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-white">${contact.fullName.charAt(0)}</span>
+                    </div>
+                    <div>
+                        <p class="text-white">${contact.fullName}</p>
+                        <p class="text-gray-500 text-sm">${contact.phone}</p>
+                    </div>
+                </div>
+            `).join('');
+            contactsList.querySelectorAll('.contact-item').forEach(item => {
+                item.addEventListener('click', () => this.selectContact(item.dataset.contactId));
+            });
         } catch (error) {
-            console.error('Erreur chargement contacts:', error);
-            this.showToast('Erreur lors du chargement des contacts', 'error');
+            this.modalSystem.showModal('Erreur de chargement des contacts.', 'error');
         }
-    }
-
-    renderContactsList(contacts) {
-        const contactsList = document.getElementById('contactsList');
-        if (!contactsList) return;
-
-        contactsList.innerHTML = contacts.map(contact => `
-            <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" 
-                 data-contact-id="${contact.id}" 
-                 onclick="chatSystem.selectContact('${contact.id}')">
-                <div class="relative">
-                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
-                    </div>
-                    ${contact.status === 'online' ? '<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>' : ''}
-                </div>
-                <div class="flex-1">
-                    <div class="flex justify-between">
-                        <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
-                        <span class="text-gray-500 text-xs">${this.messageManager.formatTime(new Date())}</span>
-                    </div>
-                    <div class="text-gray-400 text-sm truncate">${contact.phone}</div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    renderNewChatContactsList(contacts) {
-        const newChatContactsList = document.getElementById('newChatContactsList');
-        if (!newChatContactsList) return;
-
-        newChatContactsList.innerHTML = contacts.map(contact => `
-            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" 
-                 data-contact-id="${contact.id}" 
-                 onclick="chatSystem.selectContact('${contact.id}')">
-                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                    <span class="text-white font-bold">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
-                </div>
-                <div>
-                    <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
-                    <p class="text-gray-400 text-sm">${contact.phone}</p>
-                </div>
-            </div>
-        `).join('');
     }
 
     async selectContact(contactId) {
-        this.stopPolling();
-        try {
-            const contacts = await ApiManager.getContacts();
-            this.currentContact = contacts.find(c => c.id === contactId);
-            this.currentChatId = contactId;
-            this.messageManager.currentChatId = contactId;
-            
-            if (this.currentContact) {
-                this.renderChatInterface();
-                await this.loadMessages();
-                this.startPolling();
-                this.hideNewChatPreview();
-            }
-        } catch (error) {
-            console.error('Erreur sélection contact:', error);
-            this.showToast('Erreur lors de la sélection du contact', 'error');
-        }
-    }
-
-    renderChatInterface() {
-        const chatHeader = document.getElementById('chatHeader');
-        if (!chatHeader || !this.currentContact) return;
-
-        chatHeader.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center">
-                    <span class="text-white font-bold">${(this.currentContact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
-                </div>
-                <div>
-                    <h2 class="text-white font-semibold">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</h2>
-                    <p class="text-gray-400 text-sm">${this.currentContact.status === 'online' ? 'en ligne' : 'hors ligne'}</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700" title="Appel vocal"><i class="fas fa-phone text-xl"></i></button>
-                <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700" title="Rechercher"><i class="fas fa-search text-xl"></i></button>
-            </div>
-        `;
-
-        this.setupChatEventListeners();
+        this.currentChatId = contactId;
+        const contacts = await getContacts();
+        this.currentContact = contacts.find(c => c.id === contactId);
+        document.getElementById('chatContactName').textContent = this.currentContact?.fullName || 'Contact';
+        await this.loadMessages();
+        this.scrollToBottom();
     }
 
     async loadMessages() {
         try {
-            const messages = await ApiManager.getMessages(this.currentChatId);
-            this.renderMessages(messages);
+            const messages = await getMessages(this.currentChatId);
+            this.messagesContainer.innerHTML = messages.map(msg => {
+                const isMe = msg.senderId === 'user_id';
+                const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return msg.type === 'text' ? `
+                    <div class="mb-2 p-2 ${isMe ? 'message-sent' : 'message-received'}">
+                        <p>${msg.content}</p>
+                        <span class="timestamp">${time}</span>
+                    </div>
+                ` : `
+                    <div class="mb-2 p-2 ${isMe ? 'voice-message' : 'message-received'}">
+                        <audio controls src="${msg.audioUrl}" class="w-full"></audio>
+                        <span class="timestamp">${time}</span>
+                    </div>
+                `;
+            }).join('');
+            this.scrollToBottom();
         } catch (error) {
-            console.error('Erreur chargement messages:', error);
-            this.showToast('Erreur lors du chargement des messages', 'error');
+            this.modalSystem.showModal('Erreur de chargement des messages.', 'error');
         }
     }
 
-    renderMessages(messages) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        if (!messagesContainer) return;
-
-        messagesContainer.innerHTML = '';
-        let lastDate = null;
-
-        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(message => {
-            const messageDate = new Date(message.timestamp).toDateString();
-            const showDate = lastDate !== messageDate;
-            lastDate = messageDate;
-
-            const messageElement = this.messageManager.createMessageElement(message, showDate);
-            messagesContainer.appendChild(messageElement);
-        });
-
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    scrollToBottom() {
+        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
-    addMessageToInterface(message) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        if (!messagesContainer) return;
-
-        const lastMessage = messagesContainer.lastChild;
-        const lastDate = lastMessage?.dataset?.timestamp ? new Date(lastMessage.dataset.timestamp).toDateString() : null;
-        const messageDate = new Date(message.timestamp).toDateString();
-        const showDate = lastDate !== messageDate;
-
-        const messageElement = this.messageManager.createMessageElement(message, showDate);
-        messagesContainer.appendChild(messageElement);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    updateMessageStatus(messageId, status) {
-        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (messageElement) {
-            const statusElement = messageElement.querySelector('.message-status');
-            if (statusElement) {
-                statusElement.innerHTML = this.messageManager.getMessageStatusIcon(status);
-            }
-        }
-    }
-
-    setupEventListeners() {
-        const sidebarChatIcon = document.getElementById('sidebarChatIcon');
-        const settingsIcon = document.getElementById('settingsIcon');
-        const newChatBtn = document.getElementById('newChatBtn');
-        const menuBtn = document.getElementById('menuBtn');
-        const closePreview = document.getElementById('closePreview');
-        const contactSearch = document.getElementById('contactSearch');
-        const modalClose = document.getElementById('modal-close');
-        const confirmOk = document.getElementById('confirm-ok');
-        const confirmCancel = document.getElementById('confirm-cancel');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const settingsLogout = document.getElementById('settingsLogout');
-        const newContactBtn = document.getElementById('newContactBtn');
-        const newContactSave = document.getElementById('newContactSave');
-        const newContactCancel = document.getElementById('newContactCancel');
-
-        if (sidebarChatIcon) {
-            sidebarChatIcon.addEventListener('click', () => this.showChats());
-        }
-
-        if (settingsIcon) {
-            settingsIcon.addEventListener('click', () => this.showSettings());
-        }
-
-        if (newChatBtn) {
-            newChatBtn.addEventListener('click', () => this.showNewChatPreview());
-        }
-
-        if (menuBtn) {
-            menuBtn.addEventListener('click', (e) => this.toggleContextMenu(e));
-        }
-
-        if (closePreview) {
-            closePreview.addEventListener('click', () => this.hideNewChatPreview());
-        }
-
-        if (contactSearch) {
-            contactSearch.addEventListener('input', (e) => this.filterContacts(e.target.value));
-        }
-
-        if (modalClose) {
-            modalClose.addEventListener('click', () => this.hideModal('modal'));
-        }
-
-        if (confirmOk) {
-            confirmOk.addEventListener('click', () => this.handleConfirm());
-        }
-
-        if (confirmCancel) {
-            confirmCancel.addEventListener('click', () => this.hideModal('confirm-modal'));
-        }
-
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
-        }
-
-        if (settingsLogout) {
-            settingsLogout.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
-        }
-
-        if (newContactBtn) {
-            newContactBtn.addEventListener('click', () => this.showNewContactModal());
-        }
-
-        if (newContactSave) {
-            newContactSave.addEventListener('click', () => this.saveNewContact());
-        }
-
-        if (newContactCancel) {
-            newContactCancel.addEventListener('click', () => this.hideModal('new-contact-modal'));
-        }
-
-        document.addEventListener('click', (e) => {
-            const contextMenu = document.getElementById('contextMenu');
-            if (contextMenu && !contextMenu.contains(e.target) && e.target !== menuBtn) {
-                contextMenu.classList.add('hidden');
-            }
-        });
-    }
-
-    setupChatEventListeners() {
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const emojiBtn = document.getElementById('emojiBtn');
-        const charCount = document.getElementById('charCount');
-        const attachBtn = document.getElementById('attachBtn');
-        const audioInput = document.getElementById('audioInput');
-        const cancelRecording = document.getElementById('cancelRecording');
-
-        if (messageInput) {
-            messageInput.addEventListener('input', (e) => {
-                charCount.textContent = e.target.value.length;
-                sendBtn.classList.toggle('hidden', e.target.value.length === 0);
-                recordBtn.classList.toggle('hidden', e.target.value.length > 0);
-            });
-
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            });
-        }
-
-        if (sendBtn) sendBtn.addEventListener('click', () => this.sendMessage());
-        if (emojiBtn) emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
-        if (recordBtn) {
-            recordBtn.addEventListener('mousedown', () => this.startRecording());
-            recordBtn.addEventListener('mouseup', () => this.stopRecording());
-            recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.startRecording(); });
-            recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.stopRecording(); });
-        }
-
-        if (attachBtn) {
-            attachBtn.addEventListener('click', () => audioInput.click());
-        }
-
-        if (audioInput) {
-            audioInput.addEventListener('change', (e) => this.handleAudioUpload(e.target.files[0]));
-        }
-
-        if (cancelRecording) {
-            cancelRecording.addEventListener('click', () => this.cancelRecording());
-        }
-
-        const messagesContainer = document.getElementById('messagesContainer');
-        if (messagesContainer) {
-            messagesContainer.addEventListener('click', (e) => {
-                const playBtn = e.target.closest('.play-btn');
-                if (playBtn) {
-                    this.messageManager.playAudioMessage(playBtn.dataset.messageId);
-                }
-            });
-        }
-    }
-
-    async sendMessage() {
-        const messageInput = document.getElementById('messageInput');
-        if (!messageInput || !messageInput.value.trim() || !this.currentChatId) return;
-
+    async handleSendMessage() {
+        const content = this.messageInput.value.trim();
+        if (!content || !this.currentChatId) return;
         const messageData = {
             id: Date.now().toString(),
             chatId: this.currentChatId,
-            sender: 'me',
-            content: messageInput.value.trim(),
+            senderId: 'user_id',
+            content,
             type: 'text',
-            timestamp: new Date().toISOString(),
-            status: 'sending'
+            timestamp: new Date().toISOString()
         };
-
-        this.addMessageToInterface(messageData);
-        messageInput.value = '';
-        document.getElementById('charCount').textContent = '0';
-        document.getElementById('sendBtn').classList.add('hidden');
-        document.getElementById('recordBtn').classList.remove('hidden');
-
         try {
-            await ApiManager.saveMessage(messageData);
-            this.updateMessageStatus(messageData.id, 'sent');
-            setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
-            setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+            await saveMessage(messageData);
+            this.messageInput.value = '';
+            await this.loadMessages();
         } catch (error) {
-            console.error('Erreur envoi message:', error);
-            this.updateMessageStatus(messageData.id, 'failed');
-            this.showToast('Erreur lors de l\'envoi du message', 'error');
+            this.modalSystem.showModal('Erreur lors de l\'envoi du message.', 'error');
         }
     }
 
-    async startRecording() {
-        if (this.isRecording) return;
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            this.audioChunks = [];
-            this.isRecording = true;
-            this.recordingStartTime = Date.now();
-
-            const recordingIndicator = document.getElementById('recordingIndicator');
-            const recordingTime = document.getElementById('recordingTime');
-            if (recordingIndicator) recordingIndicator.classList.remove('hidden');
-
-            this.mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) this.audioChunks.push(e.data);
-            };
-
-            this.mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                const audioData = await this.blobToBase64(audioBlob);
-                const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-
-                const messageData = {
-                    id: Date.now().toString(),
-                    chatId: this.currentChatId,
-                    sender: 'me',
-                    type: 'voice',
-                    audioData: audioData,
-                    audioDuration: duration,
-                    timestamp: new Date().toISOString(),
-                    status: 'sending'
-                };
-
-                this.addMessageToInterface(messageData);
-
-                try {
-                    await ApiManager.saveMessage(messageData);
-                    this.updateMessageStatus(messageData.id, 'sent');
-                    setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
-                    setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
-                } catch (error) {
-                    console.error('Erreur envoi message vocal:', error);
-                    this.updateMessageStatus(messageData.id, 'failed');
-                    this.showToast('Erreur lors de l\'envoi du message vocal', 'error');
-                }
-
-                stream.getTracks().forEach(track => track.stop());
-                this.isRecording = false;
-                if (recordingIndicator) recordingIndicator.classList.add('hidden');
-                if (recordingTime) {
-                    recordingTime.textContent = '0:00';
-                    recordingTime.dataset.seconds = '0';
-                }
-            };
-
-            this.mediaRecorder.start();
-
-            // Update recording time display
-            this.recordingTimer = setInterval(() => {
-                if (recordingTime) {
-                    const seconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-                    const minutes = Math.floor(seconds / 60);
-                    const secs = seconds % 60;
-                    recordingTime.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
-                    recordingTime.dataset.seconds = seconds;
-                }
-            }, 1000);
-
-        } catch (error) {
-            console.error('Erreur démarrage enregistrement:', error);
-            this.showToast('Impossible de démarrer l\'enregistrement', 'error');
-            this.isRecording = false;
-        }
-    }
-
-    stopRecording() {
-        if (!this.isRecording || !this.mediaRecorder) return;
-
-        this.mediaRecorder.stop();
-        clearInterval(this.recordingTimer);
-        this.isRecording = false;
-    }
-
-    cancelRecording() {
-        if (!this.isRecording || !this.mediaRecorder) return;
-
-        this.mediaRecorder.stop();
-        clearInterval(this.recordingTimer);
-        this.isRecording = false;
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        if (recordingIndicator) recordingIndicator.classList.add('hidden');
-        this.audioChunks = [];
-        this.showToast('Enregistrement annulé', 'info');
-    }
-
-    async handleAudioUpload(file) {
-        if (!file || !this.currentChatId) return;
-
-        try {
-            const audioData = await this.blobToBase64(file);
-            const audio = new Audio(audioData);
-            const duration = await new Promise((resolve) => {
-                audio.onloadedmetadata = () => resolve(Math.floor(audio.duration));
-            });
-
-            const messageData = {
-                id: Date.now().toString(),
-                chatId: this.currentChatId,
-                sender: 'me',
-                type: 'audio',
-                audioData: audioData,
-                audioDuration: duration,
-                timestamp: new Date().toISOString(),
-                status: 'sending'
-            };
-
-            this.addMessageToInterface(messageData);
-
+    async toggleRecording() {
+        if (!this.isRecording) {
             try {
-                await ApiManager.saveMessage(messageData);
-                this.updateMessageStatus(messageData.id, 'sent');
-                setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
-                setTimeout
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream);
+                this.audioChunks = [];
+                this.mediaRecorder.ondataavailable = (e) => this.audioChunks.push(e.data);
+                this.mediaRecorder.onstop = () => this.handleStopRecording();
+                this.mediaRecorder.start();
+                this.isRecording = true;
+                this.recordBtn.classList.add('bg-red-800');
+                this.recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                this.modalSystem.showModal('Enregistrement en cours...', 'info');
+            } catch (error) {
+                this.modalSystem.showModal('Erreur d\'accès au microphone.', 'error');
+            }
+        } else {
+            this.mediaRecorder.stop();
+            this.isRecording = false;
+            this.recordBtn.classList.remove('bg-red-800');
+            this.recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            this.modalSystem.hideModal();
+        }
+    }
+
+    async handleStopRecording() {
+        if (!this.currentChatId) return;
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        const duration = this.audioChunks.reduce((acc, chunk) => acc + (chunk.size / 1000), 0);
+        try {
+            await saveVoiceMessage(this.currentChatId, { duration });
+            await this.loadMessages();
+        } catch (error) {
+            this.modalSystem.showModal('Erreur lors de l\'envoi du message vocal.', 'error');
+        }
+    }
+
+    pollMessages() {
+        setInterval(async () => {
+            if (this.currentChatId) {
+                try {
+                    await this.loadMessages();
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }
+        }, 5000);
+    }
+
+    logout() {
+        this.modalSystem.showConfirmModal(
+            'Déconnexion',
+            'Voulez-vous vraiment vous déconnecter ?',
+            () => {
+                this.modalSystem.showModal('Déconnexion réussie.', 'success');
+                this.currentChatId = null;
+                this.currentContact = null;
+                this.messagesContainer.innerHTML = '';
+            },
+            'question'
+        );
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modalSystem = new ModalSystem();
+    window.WhatsAppSystems = {
+        modalSystem,
+        chatSystem: new ChatSystem(modalSystem)
+    };
+});

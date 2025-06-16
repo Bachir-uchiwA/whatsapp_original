@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Web</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script> 
+    <script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -20,30 +20,15 @@
                         'pulse-slow': 'pulse 3s infinite'
                     },
                     keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        },
-                        fadeOut: {
-                            '0%': { opacity: '1' },
-                            '100%': { opacity: '0' }
-                        },
-                        scaleIn: {
-                            '0%': { opacity: '0', transform: 'scale(0.9)' },
-                            '100%': { opacity: '1', transform: 'scale(1)' }
-                        },
-                        scaleOut: {
-                            '0%': { opacity: '1', transform: 'scale(1)' },
-                            '100%': { opacity: '0', transform: 'scale(0.9)' }
-                        },
-                        slideUp: {
-                            '0%': { opacity: '0', transform: 'translateY(20px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        },
-                        slideDown: {
-                            '0%': { opacity: '1', transform: 'translateY(0)' },
-                            '100%': { opacity: '0', transform: 'translateY(-20px)' }
-                        }
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        fadeOut: { '0%': { opacity: '1' }, '100%': { opacity: '0' } },
+                        scaleIn: { '0%': { opacity: '0', transform: 'scale(0.9)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        scaleOut: { '0%': { opacity: '1', transform: 'scale(1)' }, '100%': { opacity: '0', transform: 'scale(0.9)' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        slideDown: { '0%': { opacity: '1', transform: 'translateY(0)' }, '100%': { opacity: '0', transform: 'translateY(-20px)' } }
+                    },
+                    backgroundImage: {
+                        'whatsapp-bg': 'url("https://i.imgur.com/3kD3g7D.jpg")' // Fond WhatsApp
                     }
                 }
             }
@@ -51,22 +36,15 @@
     </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 3px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.3);
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+        .message-sent { background-color: #DCF8C6; color: black; border-radius: 12px 12px 0 12px; max-width: 60%; margin-left: auto; }
+        .message-received { background-color: #FFFFFF; color: black; border-radius: 12px 12px 12px 0; max-width: 60%; }
+        .voice-message { background-color: #DCF8C6; border-radius: 12px; padding: 8px; max-width: 60%; margin-left: auto; }
+        .timestamp { font-size: 0.65rem; color: #8696A0; }
     </style>
 </head>
 <body class="bg-gray-900 h-screen overflow-hidden">
@@ -116,192 +94,216 @@
                 <div class="w-10 h-[2px] bg-gray-500"></div>
                 <svg viewBox="0 0 24 24" height="28" width="28" preserveAspectRatio="xMidYMid meet" class="text-gray-50 cursor-pointer hover:text-white hover:scale-110 transition-all duration-200" id="settingsIcon" fill="none">
                     <title>settings-refreshed</title>
-                    <path d="M10.825 22C10.375 22 9.98748 21.85 9.66248 21.55C9.33748 21.25 9.14165 20.8833 9.07498 20.45L8.84998 18.8C8.63331 18.7167 8.42915 18.6167 8.23748 18.5C8.04581 18.3833 7.85831 18.2583 7.67498 18.125L6.12498 18.775C5.70831 18.9583 5.29165 18.975 4.87498 18.825C4.45831 18.675 4.13331 18.4083 3.89998 18.025L2.72498 15.975C2.49165 15.5917 2.42498 15.1833 2.52498 14.75C2.62498 14.3167 2.84998 13.9583 3.19998 13.675L4.52498 12.675C4.50831 12.5583 4.49998 12.4458 4.49998 12.3375V11.6625C4.49998 11.5542 4.50831 11.4417 4.52498 11.325L3.19998 10.325C2.84998 10.0417 2.62498 9.68333 2.52498 9.25C2.42498 8.81667 2.49165 8.40833 2.72498 8.025L3.89998 5.975C4.13331 5.59167 4.45831 5.325 4.87498 5.175C5.29165 5.025 5.70831 5.04167 6.12498 5.225L7.67498 5.875C7.85831 5.74167 8.04998 5.61667 8.24998 5.5C8.44998 5.38333 8.64998 5.28333 8.84998 5.2L9.07498 3.55C9.14165 3.11667 9.33748 2.75 9.66248 2.45C9.98748 2.15 10.375 2 10.825 2H13.175C13.625 2 14.0125 2.15 14.3375 2.45C14.6625 2.75 14.8583 3.11667 14.925 3.55L15.15 5.2C15.3666 5.28333 15.5708 5.38333 15.7625 5.5C15.9541 5.61667 16.1416 5.74167 16.325 5.875L17.875 5.225C18.2916 5.04167 18.7083 5.025 19.125 5.175C19.5416 5.325 19.8666 5.59167 20.1 5.975L21.275 8.025C21.5083 8.40833 21.575 8.81667 21.475 9.25C21.375 9.68333 21.15 10.0417 20.8 10.325L19.475 11.325C19.4916 11.4417 19.5 11.5542 19.5 11.6625V12.3375C19.5 12.4458 19.4833 12.5583 19.45 12.675L20.775 13.675C21.125 13.9583 21.35 14.3167 21.45 14.75C21.55 15.1833 21.4833 15.5917 21.25 15.975L20.05 18.025C19.8166 18.4083 19.4916 18.675 19.075 18.825C18.6583 18.975 18 18.9583 17.825 18.775L16.325 18.125C16.1416 18.2583 15.95 18.3833 15.75 18.5C15.55 18.6167 15.35 18.7167 15.15 18.8L14.925 20.45C14.8583 20.8833 14.6625 21.25 14.3375 21.55C14.0125 21.85 13.625 22 13.175 22H10.825Z" fill="currentColor"></path>
+                    <path d="M10.825 22C10.375 22 9.98748 21.85 9.66248 21.55C9.33748 21.25 9.14165 20.8833 9.07498 20.45L8.84998 18.8C8.63331 18.7167 8.42915 18.6167 8.23748 18.5C8.04581 18.3833 7.85831 18.2583 7.67498 18.125L6.12498 18.775C5.70831 18.9583 5.29165 18.975 4.87498 18.825C4.45831 18.675 4.13331 18.4083 3.89998 18.025L2.72498 15.975C2.49165 15.5917 2.42498 15.1833 2.52498 14.75C2.62498 14.3167 2.84998 13.9583 3.19998 13.675L4.52498 12.675C4.50831 12.5583 4.49998 12.4458 4.49998 12.3375V11.6625C4.49998 11.5542 4.50831 11.4417 4.52498 11.325L3.19998 10.325C2.84998 10.0417 2.62498 9.68333 2.52498 9.25C2.42498 8.81667 2.49165 8.40833 2.72498 8.025L3.89998 5.975C4.13331 5.59167 4.45831 5.325 4.87498 5.175C5.29165 5.025 5.70831 5.04167 6.12498 5.225L7.67498 5.875C7.85831 5.74167 8.04998 5.61667 8.24998 5.5C8.44998 5.38333 8.64998 5.28333 8.84998 5.2L9.07498 3.55C9.14165 3.11667 9.33748 2.75 9.66248 2.45C9.98748 2.15 10.375 2 10.825 2H13.175C13.625 2 14.0125 2.15 14.3375 2.45C14.6625 2.75 14.8583 3.11667 14.925 3.55L15.15 5.2C15.3666 5.28333 15.5708 5.38333 15.7625 5.5C15.9541 5.61667 16.1416 5.74167 16.325 5.875L17.875 5.225C18.2916 5.04167 18.7083 5.025 19.125 5.175C19.5416 5.325 19.8666 5.59167 20.1 5.975L21.275 8.025C21.5083 8.40833 21.575 8.81667 21.475 9.25C21.375 9.68333 21.15 10.0417 20.8 10.325L19.475 11.325C19.4916 11.4417 19.5 11.5542 19.5 11.6625V12.3375C19.5 12.4458 19.4833 12.5583 19.45 12.675L20.775 13.675C21.125 13.9583 21.35 14.3167 21.45 14.75C21.55 15.1833 21.4833 15.5917 21.25 15.975L20.05 18.025C19.8166 18.4083 19.4916 18.675 19.075 18.825C18.6583 18.975 18.2416 18.9583 17.825 18.775L16.325 18.125C16.1416 18.2583 15.95 18.3833 15.75 18.5C15.55 18.6167 15.35 18.7167 15.15 18.8L14.925 20.45C14.8583 20.8833 14.6625 21.25 14.3375 21.55C14.0125 21.85 13.625 22 13.175 22H10.825ZM11 20H12.975L13.325 17.35C13.8416 17.2167 14.3208 17.0208 14.7625 16.7625C15.2041 16.5042 15.6083 16.1917 15.975 15.825L18.45 16.85L19.425 15.15L17.275 13.525C17.3583 13.2917 17.4166 13.0458 17.45 12.7875C17.4833 12.5292 17.5 12.2667 17.5 12C17.5 11.7333 17.4833 11.4708 17.45 11.2125C17.4166 10.9542 17.3583 10.7083 17.275 10.475L19.425 8.85L18.45 7.15L15.975 8.2C15.6083 7.81667 15.2041 7.49583 14.7625 7.2375C14.3208 6.97917 13.8416 6.78333 13.325 6.65L13 4H11.025L10.675 6.65C10.1583 6.78333 9.67915 6.97917 9.23748 7.2375C8.79581 7.49583 8.39165 7.80833 8.02498 8.175L5.54998 7.15L4.57498 8.85L6.72498 10.45C6.64165 10.7 6.58331 10.95 6.54998 11.2C6.51665 11.45 6.49998 11.7167 6.49998 12C6.49998 12.2667 6.51665 12.525 6.54998 12.775C6.58331 13.025 6.64165 13.275 6.72498 13.525L4.57498 15.15L5.54998 16.85L8.02498 15.8C8.39165 16.1833 8.79581 16.5042 9.23748 16.7625C9.67915 17.0208 10.1583 17.2167 10.675 17.35L11 20Z" fill="currentColor"></path>
                 </svg>
+                <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                    <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-10 h-10 rounded-full border-4 border-gray-700 shadow-lg group-hover:border-gray-600 transition-colors duration-200">
+                </div>
             </div>
         </div>
-
-        <!-- Sidebar principale -->
-        <div class="h-full w-96 bg-gray-800 flex flex-col border-r border-gray-700">
-            <div id="sidebarChats" class="flex-1 flex flex-col">
-                <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
-                    <div class="relative">
-                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
-                            <span class="text-white font-bold text-lg">A</span>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+        <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700">
+            <div id="sidebarChats" class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700">
+                <div class="flex items-center justify-between p-4 border-b border-gray-800">
+                    <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center">
+                        <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-10 h-10 rounded-full border-4 border-gray-700 shadow-lg group-hover:border-gray-600 transition-colors duration-200">
                     </div>
-                    <div class="flex-1">
-                        <div class="flex justify-between items-center">
-                            <span class="text-white font-semibold text-lg">Utilisateur</span>
-                            <div class="flex space-x-2">
-                                <button id="newChatBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Nouvelle discussion">
-                                    <i class="fas fa-comment-medical text-xl"></i>
-                                </button>
-                                <button id="menuBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Menu">
-                                    <i class="fas fa-ellipsis-v text-xl"></i>
-                                </button>
+                    <div class="flex space-x-4">
+                        <button id="newChatBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                            <i class="fas fa-plus-circle text-xl"></i>
+                        </button>
+                        <button id="menuBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                            <i class="fas fa-ellipsis-v text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <input type="text" id="contactSearch" placeholder="Rechercher ou démarrer une discussion" class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200">
+                </div>
+                <div class="flex border-b border-gray-800">
+                    <button class="flex-1 py-2 text-gray-400 hover:text-white border-b-2 border-transparent hover:border-green-500 transition-colors duration-200">Tous</button>
+                    <button class="flex-1 py-2 text-gray-400 hover:text-white border-b-2 border-transparent hover:border-green-500 transition-colors duration-200">Non lus</button>
+                    <button class="flex-1 py-2 text-gray-400 hover:text-white border-b-2 border-transparent hover:border-green-500 transition-colors duration-200">Favoris</button>
+                    <button class="flex-1 py-2 text-gray-400 hover:text-white border-b-2 border-transparent hover:border-green-500 transition-colors duration-200">Groupes</button>
+                </div>
+                <div class="p-3 bg-green-900 text-green-300 text-sm flex items-center justify-between">
+                    <span>Activer la synchronisation en arrière-plan <br> Synchronisez vos messages en arrière-plan pour des performances accrues</span>
+                    <button class="text-green-300 hover:text-white">×</button>
+                </div>
+                <div class="p-3 text-gray-400 text-sm border-b border-gray-800 hover:bg-gray-800 cursor-pointer flex justify-between items-center">
+                    <span>Archivées <span class="ml-2 text-gray-500">1</span></span>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </div>
+                <!-- Chat List -->
+                <div class="flex-1 overflow-y-auto scrollbar-thin" id="sidebarMessagesContainer">
+                    <div id="contactsList" class="divide-y divide-gray-800"></div>
+                </div>
+            </div>
+            <div id="tempPreview" class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 hidden"></div>
+        </div>
+        <div class="flex-1 flex flex-col bg-gray-800" id="chatArea">
+            <!-- Barre supérieure -->
+            <div class="bg-gray-900 p-3 border-b border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center">
+                        <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="contact-avatar" class="w-10 h-10 rounded-full border-2 border-gray-700">
+                    </div>
+                    <div>
+                        <h3 id="chatContactName" class="text-white font-semibold">Contact</h3>
+                        <p class="text-gray-500 text-xs">En ligne</p>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <button id="callBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fas fa-phone text-lg"></i>
+                    </button>
+                    <button id="searchBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fas fa-search text-lg"></i>
+                    </button>
+                    <button id="optionsBtn" class="text-gray-400 hover:text-white transition-colors duration-200">
+                        <i class="fas fa-ellipsis-v text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Zone des messages -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto bg-whatsapp-bg p-4 scrollbar-thin"></div>
+            <!-- Barre de saisie -->
+            <div class="bg-gray-900 p-4 border-t border-gray-700 flex items-center space-x-4">
+                <input id="messageInput" type="text" placeholder="Écrivez un message" class="flex-1 bg-gray-800 text-gray-200 rounded-lg px-4 py-2 focus:outline-none" />
+                <button id="sendBtn" class="bg-green-600 text-white rounded-lg px-4 py-2">Envoyer</button>
+                <button id="recordBtn" class="bg-red-600 text-white rounded-full p-2 flex items-center justify-center">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+            <!-- Menu déroulant des options -->
+            <div id="chatOptionsMenu" class="hidden absolute bg-gray-800 text-white rounded-lg shadow-lg py-2 w-48 z-50 animate-scale-in right-4 top-16">
+                <ul>
+                    <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Nouveau groupe</a></li>
+                    <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Archiver le chat</a></li>
+                    <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Épingler le chat</a></li>
+                    <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Supprimer le chat</a></li>
+                </ul>
+            </div>
+            <!-- Champ de recherche -->
+            <div id="searchBar" class="hidden bg-gray-900 p-3 border-b border-gray-700">
+                <input type="text" id="searchInput" placeholder="Rechercher dans la conversation" class="w-full bg-gray-800 text-gray-200 rounded-lg px-4 py-2 focus:outline-none">
+            </div>
+        </div>
+        <div id="newChatPreview" class="hidden">
+            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700">
+                <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
+                    <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
+                    <button id="closePreview" class="text-white hover:text-gray-300">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-4">
+                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-users text-xl text-green-500 mr-3"></i>
+                            <span>Nouveau groupe</span>
+                        </button>
+                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
+                            <span>Nouveau contact</span>
+                        </button>
+                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                            <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
+                            <span>Nouvelle communauté</span>
+                        </button>
+                    </div>
+                    <div class="p-4 border-t-2 border-gray-700">
+                        <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
+                        <div class="mt-2">
+                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white font-bold">B</span>
+                                </div>
+                                <div>
+                                    <p class="text-white">Bachir IIR 👀 (vous)</p>
+                                    <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-white font-bold">S</span>
+                                </div>
+                                <div>
+                                    <p class="text-white">Salif Thiouné 😎 39</p>
+                                    <p class="text-gray-400 text-sm">+221 70 620 28 16</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="p-2 bg-gray-900">
-                    <div class="relative">
-                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
-                        <input id="contactSearch" type="text" placeholder="Rechercher ou démarrer une discussion" class="w-full pl-10 pr-4 py-2 bg-gray-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    </div>
-                </div>
-                <div id="contactsList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
-            </div>
-
-            <!-- Paramètres -->
-            <div id="sidebarSettings" class="flex-1 flex flex-col hidden">
-                <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
-                    <button id="backToChats" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700">
-                        <i class="fas fa-arrow-left text-xl"></i>
-                    </button>
-                    <h2 class="text-white font-semibold text-lg">Paramètres</h2>
-                </div>
-                <div class="flex-1 overflow-y-auto scrollbar-thin p-4">
-                    <div class="flex items-center space-x-3 mb-6">
-                        <div class="bg-green-500 w-16 h-16 rounded-full flex items-center justify-center">
-                            <span class="text-white font-bold text-2xl">A</span>
-                        </div>
-                        <div>
-                            <p class="text-white font-semibold">Utilisateur</p>
-                            <p class="text-gray-400 text-sm">+33 6 12 34 56 78</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                            <i class="fas fa-user text-gray-400"></i>
-                            <span>Profil</span>
-                        </button>
-                        <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                            <i class="fas fa-bell text-gray-400"></i>
-                            <span>Notifications</span>
-                        </button>
-                        <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                            <i class="fas fa-lock text-gray-400"></i>
-                            <span>Confidentialité</span>
-                        </button>
-                        <button id="settingsLogout" class="w-full text-left p-3 text-red-400 hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                            <i class="fas fa-sign-out-alt text-red-400"></i>
-                            <span>Déconnexion</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Nouvelle discussion -->
-            <div id="newChatPreview" class="flex-1 flex flex-col hidden">
-                <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
-                    <button id="closePreview" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700">
-                        <i class="fas fa-arrow-left text-xl"></i>
-                    </button>
-                    <h2 class="text-white font-semibold text-lg">Nouvelle discussion</h2>
-                </div>
-                <div class="p-2 bg-gray-900">
-                    <button id="newContactBtn" class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                        <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user-plus text-white"></i>
-                        </div>
-                        <span>Nouveau contact</span>
-                    </button>
-                </div>
-                <div id="newChatContactsList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
-            </div>
-
-            <!-- Menu contextuel -->
-            <div id="contextMenu" class="absolute hidden bg-gray-800 rounded-lg shadow-lg py-2 w-48 z-50">
-                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Nouvelle discussion</button>
-                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Nouveau groupe</button>
-                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Paramètres</button>
-                <button id="logoutBtn" class="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-700">Déconnexion</button>
             </div>
         </div>
-
-        <!-- Zone de chat -->
-        <div class="flex-1 flex flex-col bg-gray-800">
-            <div id="chatHeader" class="p-4 bg-gray-900 flex justify-between items-center border-b border-gray-700"></div>
-            <div id="messagesContainer" class="flex-1 overflow-y-auto scrollbar-thin p-4"></div>
-            <div class="p-4 bg-gray-900 border-t border-gray-700 relative">
-                <div id="emojiPicker" class="absolute bottom-16 left-4 bg-gray-800 rounded-lg shadow-lg p-4 w-64 hidden">
-                    <div id="emojiGrid" class="grid grid-cols-5 gap-2"></div>
+        <div id="contextMenu" class="hidden absolute bg-gray-800 text-white rounded-lg left-[650px] top-[55px] shadow-lg py-2 w-48 z-50 animate-scale-in">
+            <ul>
+                <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Nouveau groupe</a></li>
+                <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Archiver le chat</a></li>
+                <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Épingler le chat</a></li>
+                <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Supprimer le chat</a></li>
+                <li><a href="#" id="logoutBtn" class="block px-4 py-2 hover:bg-red-700">Se déconnecter</a></li>
+            </ul>
+        </div>
+        <div id="sidebarSettings" class="w-[600px] bg-gray-900 flex flex-col h-full hidden relative">
+            <div class="flex justify-center pt-8 pb-4 bg-gray-900 border-b border-gray-800">
+                <input type="text" placeholder="Rechercher dans les paramètres" class="w-3/4 bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200 text-center hover:bg-gray-700">
+            </div>
+            <div class="flex flex-col items-center pt-8 pb-6 border-b border-gray-800 relative">
+                <div class="relative group">
+                    <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-4 border-gray-700 shadow-lg group-hover:border-gray-600 transition-colors duration-200">
+                    <span class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-2 border-gray-900 rounded-full animate-pulse"></span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button id="emojiBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Émojis">
-                        <i class="fas fa-smile text-xl"></i>
-                    </button>
-                    <button id="attachBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Joindre un fichier audio">
-                        <i class="fas fa-paperclip text-xl"></i>
-                    </button>
-                    <input id="audioInput" type="file" accept="audio/mp3,audio/wav" class="hidden">
-                    <div class="relative flex-1">
-                        <textarea id="messageInput" placeholder="Écrire un message..." class="w-full bg-gray-700 text-white rounded-lg p-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" rows="1"></textarea>
-                        <span id="charCount" class="absolute right-3 bottom-3 text-gray-500 text-xs">0</span>
-                    </div>
-                    <button id="recordBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Enregistrer un message vocal">
-                        <i class="fas fa-microphone text-xl"></i>
-                    </button>
-                    <button id="sendBtn" class="hidden text-white bg-green-500 p-2 rounded-full hover:bg-green-600" title="Envoyer">
-                        <i class="fas fa-paper-plane text-xl"></i>
-                    </button>
+                <div class="mt-4 text-white font-bold text-xl flex items-center gap-2">Bachir_deV <span class="text-lg">💻❌🇸🇳🖤</span></div>
+                <div class="text-green-400 text-xs font-semibold mt-1 flex items-center gap-1">
+                    <span class="w-2 h-2 bg-green-400 rounded-full inline-block animate-pulse"></span>
+                    En ligne
                 </div>
-                <div id="recordingIndicator" class="hidden flex items-center space-x-2 mt-2">
-                    <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span id="recordingTime" class="text-white text-sm" data-seconds="0">0:00</span>
-                    <button id="cancelRecording" class="text-red-400 hover:text-red-500">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                <div class="text-gray-400 text-xs mt-2 px-4 text-center">Salut ! J'utilise WhatsApp.</div>
+            </div>
+            <div class="flex-1 px-0 py-0 overflow-y-auto scrollbar-thin">
+                <ul class="divide-y divide-gray-800">
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-shield text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Compte</div><div class="text-gray-500 text-xs">Notifications de sécurité, informations de compte</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-user-lock text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Confidentialité</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-comments text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Discussions</div><div class="text-gray-500 text-xs">Thème, fond d'écran, paramètres des discussions</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-bell text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Notifications</div><div class="text-gray-500 text-xs">Notifications de messages</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-keyboard text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white">Raccourcis clavier</div><div class="text-gray-500 text-xs">Raccourcis pour naviguer plus rapidement</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-download text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Stockage et données</div><div class="text-gray-500 text-xs">Utilisation du réseau, téléchargement automatique</div></div></a></li>
+                    <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-question-circle text-green-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-gray-100 font-medium group-hover:text-white transition-colors duration-200">Aide</div><div class="text-gray-500 text-xs">Centre d'aide, nous contacter, conditions d'utilisation</div></div></a></li>
+                    <li><a href="#" id="settingsLogout" class="flex items-center px-8 py-5 hover:bg-red-800 transition-all duration-200 group hover:scale-[1.02]"><i class="fas fa-sign-out-alt text-red-400 text-lg w-7 group-hover:scale-110 transition-transform duration-200"></i><div class="ml-4"><div class="text-red-300 font-medium group-hover:text-red-200 transition-colors duration-200">Se déconnecter</div><div class="text-gray-500 text-xs">Déconnexion de WhatsApp Web</div></div></a></li>
+                </ul>
+            </div>
+        </div>
+        <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full animate-scale-in">
+                <div class="flex items-center space-x-4">
+                    <div id="modal-icon"></div>
+                    <p id="modal-message" class="text-white text-sm"></p>
+                </div>
+                <button id="modal-close" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 transition-colors duration-200">OK</button>
+            </div>
+        </div>
+        <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full animate-scale-in">
+                <div class="flex items-center space-x-4">
+                    <div id="confirm-icon"></div>
+                    <div><h3 id="confirm-title" class="text-white font-semibold"></h3><p id="confirm-message" class="text-gray-300 text-sm mt-2"></p></div>
+                </div>
+                <div class="flex space-x-2 mt-4">
+                    <button id="confirm-ok" class="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg py-2 transition-colors duration-200">Confirmer</button>
+                    <button id="confirm-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 transition-colors duration-200">Annuler</button>
                 </div>
             </div>
         </div>
+        <div id="loading-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full flex items-center space-x-4 animate-scale-in">
+                <div class="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                <p id="loading-message" class="text-white text-sm">Chargement...</p>
+            </div>
+        </div>
+        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
     </div>
-
-    <!-- Modale de confirmation -->
-    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 rounded-lg p-6 w-80">
-            <h3 id="confirm-title" class="text-white font-semibold mb-2"></h3>
-            <p id="confirm-message" class="text-gray-300 mb-4"></p>
-            <div class="flex justify-end space-x-2">
-                <button id="confirm-cancel" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Annuler</button>
-                <button id="confirm-ok" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Confirmer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modale d'information -->
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 rounded-lg p-6 w-80">
-            <div class="flex items-center space-x-2 mb-4">
-                <span id="modal-icon"></span>
-                <p id="modal-message" class="text-white"></p>
-            </div>
-            <div class="flex justify-end">
-                <button id="modal-close" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">OK</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modale nouveau contact -->
-    <div id="new-contact-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 rounded-lg p-6 w-80">
-            <h3 class="text-white font-semibold mb-4">Nouveau contact</h3>
-            <div class="space-y-4">
-                <input id="newContactName" type="text" placeholder="Nom complet" class="w-full bg-gray-700 text-white rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                <input id="newContactPhone" type="tel" placeholder="Numéro de téléphone" class="w-full bg-gray-700 text-white rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-            </div>
-            <div class="flex justify-end space-x-2 mt-4">
-                <button id="new-contact-cancel" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Annuler</button>
-                <button id="new-contact-save" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Conteneur pour les toasts -->
-    <div id="toastContainer" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
-
-    <script src="chat.js"></script>
+    <script src="/chat.js"></script>
 </body>
 </html>
