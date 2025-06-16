@@ -1,20 +1,13 @@
-// JS principal pour la page chat
-console.log("chat.js chargé !");
-
 const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
 async function apiRequest(endpoint, options = {}) {
     try {
-        console.log(`Requête API: ${API_BASE_URL}${endpoint}`, options);
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             headers: { 'Content-Type': 'application/json', ...options.headers },
             ...options
         });
-        console.log('Réponse API:', response.status, response.statusText);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        console.log('Données reçues:', data);
-        return data;
+        return await response.json();
     } catch (error) {
         console.error('API Error:', error);
         throw error;
@@ -44,8 +37,7 @@ async function saveVoiceMessage(chatId, audioData) {
     formData.append('audio', audioData, 'voice_message.webm');
     return await apiRequest('/voice-messages', {
         method: 'POST',
-        body: formData,
-        headers: { 'Content-Type': undefined }
+        body: formData
     });
 }
 
@@ -54,7 +46,6 @@ class ModalSystem {
         this.modal = document.getElementById('modal');
         this.confirmModal = document.getElementById('confirm-modal');
         this.loadingModal = document.getElementById('loading-modal');
-        this.toastContainer = document.getElementById('toastContainer');
         this.tempPreview = document.getElementById('tempPreview');
         this.currentView = null;
         this.setupEventListeners();
@@ -70,78 +61,79 @@ class ModalSystem {
     }
 
     showModal(message, type = 'info') {
-        const modal = this.modal, messageEl = document.getElementById('modal-message'), iconEl = document.getElementById('modal-icon');
-        if (!modal || !messageEl || !iconEl) return;
+        if (!this.modal) return;
+        const messageEl = document.getElementById('modal-message');
+        const iconEl = document.getElementById('modal-icon');
+        if (!messageEl || !iconEl) return;
         messageEl.textContent = message;
         const icons = {
-            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-check text-white text-xl"></i></div>',
-            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-times text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-info text-white text-xl"></i></div>'
+            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"><i class="fas fa-check text-white text-xl"></i></div>',
+            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-times text-white text-xl"></i></div>',
+            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
+            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-info text-white text-xl"></i></div>'
         };
         iconEl.innerHTML = icons[type] || icons.info;
-        modal.classList.remove('hidden');
-        modal.classList.add('animate-fade-in');
-        type === 'success' && setTimeout(() => this.hideModal(), 3000);
+        this.modal.classList.remove('hidden');
+        this.modal.classList.add('animate-fade-in');
+        if (type === 'success') setTimeout(() => this.hideModal(), 3000);
     }
 
     hideModal() {
-        const modal = this.modal;
-        if (!modal) return;
-        modal.classList.add('animate-fade-out');
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('animate-fade-in', 'animate-fade-out'); }, 200);
+        if (!this.modal) return;
+        this.modal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.modal.classList.add('hidden');
+            this.modal.classList.remove('animate-fade-in', 'animate-fade-out');
+        }, 200);
     }
 
     showConfirmModal(title, message, onConfirm, type = 'warning') {
-        const modal = this.confirmModal, titleEl = document.getElementById('confirm-title'), messageEl = document.getElementById('confirm-message'), iconEl = document.getElementById('confirm-icon'), confirmBtn = document.getElementById('confirm-ok');
-        if (!modal || !titleEl || !messageEl || !iconEl || !confirmBtn) return;
+        if (!this.confirmModal) return;
+        const titleEl = document.getElementById('confirm-title');
+        const messageEl = document.getElementById('confirm-message');
+        const iconEl = document.getElementById('confirm-icon');
+        const confirmBtn = document.getElementById('confirm-ok');
+        if (!titleEl || !messageEl || !iconEl || !confirmBtn) return;
         titleEl.textContent = title;
         messageEl.textContent = message;
-        const icons = { danger: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-exclamation-triangle text-white text-xl"></i></div>', warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce"><i class="fas fa-exclamation text-white text-xl"></i></div>', question: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center animate-pulse"><i class="fas fa-question text-white text-xl"></i></div>' };
+        const icons = {
+            danger: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-white text-xl"></i></div>',
+            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
+            question: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-question text-white text-xl"></i></div>'
+        };
         iconEl.innerHTML = icons[type] || icons.warning;
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
         newConfirmBtn.addEventListener('click', () => { this.hideConfirmModal(); onConfirm && onConfirm(); });
-        modal.classList.remove('hidden');
-        modal.classList.add('animate-fade-in');
+        this.confirmModal.classList.remove('hidden');
+        this.confirmModal.classList.add('animate-fade-in');
     }
 
     hideConfirmModal() {
-        const modal = this.confirmModal;
-        if (!modal) return;
-        modal.classList.add('animate-fade-out');
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('animate-fade-in', 'animate-fade-out'); }, 200);
+        if (!this.confirmModal) return;
+        this.confirmModal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.confirmModal.classList.add('hidden');
+            this.confirmModal.classList.remove('animate-fade-in', 'animate-fade-out');
+        }, 200);
     }
 
     showLoadingModal(message = 'Chargement...') {
-        const modal = this.loadingModal, messageEl = document.getElementById('loading-message');
-        if (!modal || !messageEl) return;
+        if (!this.loadingModal) return;
+        const messageEl = document.getElementById('loading-message');
+        if (!messageEl) return;
         messageEl.textContent = message;
-        modal.classList.remove('hidden');
-        modal.classList.add('animate-fade-in');
+        this.loadingModal.classList.remove('hidden');
+        this.loadingModal.classList.add('animate-fade-in');
     }
 
     hideLoadingModal() {
-        const modal = this.loadingModal;
-        if (!modal) return;
-        modal.classList.add('animate-fade-out');
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('animate-fade-in', 'animate-fade-out'); }, 200);
-    }
-
-    showToast(message, type = 'info') {
-        if (!this.toastContainer) return;
-        const toast = document.createElement('div');
-        toast.className = `p-3 rounded-lg text-white shadow-lg animate-slide-down ${type === 'success' ? 'bg-green-600' : 'bg-blue-600'} max-w-xs`;
-        toast.innerHTML = `${message} <button class="ml-4 text-white hover:text-gray-200">×</button>`;
-        this.toastContainer.appendChild(toast);
-        setTimeout(() => this.removeToast(toast), 5000);
-        toast.querySelector('button')?.addEventListener('click', () => this.removeToast(toast));
-    }
-
-    removeToast(toast) {
-        if (!toast) return;
-        toast.classList.add('animate-slide-up');
-        setTimeout(() => toast.remove(), 300);
+        if (!this.loadingModal) return;
+        this.loadingModal.classList.add('animate-fade-out');
+        setTimeout(() => {
+            this.loadingModal.classList.add('hidden');
+            this.loadingModal.classList.remove('animate-fade-in', 'animate-fade-out');
+        }, 200);
     }
 
     showNewContactFormInPreview() {
@@ -190,40 +182,36 @@ class ModalSystem {
             const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
             const sync = document.getElementById('syncContact').checked;
             if (!firstName || !lastName || !phone) {
-                this.warning('Veuillez remplir tous les champs obligatoires.');
+                this.showModal('Veuillez remplir tous les champs obligatoires.', 'warning');
                 return;
             }
             const phoneRegex = /^[\+]?[0-9]{10,}$/;
             if (!phoneRegex.test(phone)) {
-                this.warning('Veuillez entrer un numéro de téléphone valide.');
+                this.showModal('Veuillez entrer un numéro de téléphone valide.', 'warning');
                 return;
             }
             const contactData = {
                 id: Date.now().toString(),
-                firstName: firstName,
-                lastName: lastName,
+                firstName,
+                lastName,
                 fullName: `${firstName} ${lastName}`,
-                phone: phone,
+                phone,
                 country: phone.slice(1, 3),
                 avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
                 createdAt: new Date().toISOString()
             };
-            this.loading('Ajout du contact...');
+            this.showLoadingModal('Ajout du contact...');
             try {
                 await saveContact(contactData);
-                this.hideLoading();
-                this.success(`Contact ${contactData.fullName} ajouté avec succès !`);
-                this.showToast(`Nouveau contact : ${contactData.fullName}`, 'success');
+                this.hideLoadingModal();
+                this.showModal(`Contact ${contactData.fullName} ajouté avec succès !`, 'success');
                 this.hideNewContactFormInPreview();
                 this.showNewChatInPreview();
                 const chatSystem = window.WhatsAppSystems?.chatSystem;
-                if (chatSystem) {
-                    await chatSystem.updateContactsList();
-                }
+                if (chatSystem) await chatSystem.updateContactsList();
             } catch (error) {
-                console.error('Erreur lors de l\'ajout du contact:', error);
-                this.hideLoading();
-                this.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.');
+                this.hideLoadingModal();
+                this.showModal('Erreur lors de l\'ajout du contact. Veuillez réessayer.', 'error');
             }
         });
     }
@@ -285,78 +273,82 @@ class ModalSystem {
         this.currentView = null;
     }
 
-    async showNewChatInPreview() {
+    showNewChatInPreview() {
         if (!this.tempPreview) return;
         this.currentView = 'newChat';
-        this.loading('Chargement des contacts...');
-        const contacts = await getContacts();
-        this.hideLoading();
-        const newChatHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
-                <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
-                    <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
-                    <button id="closePreview" class="text-white hover:text-gray-300">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-                <div class="flex-1 overflow-y-auto">
-                    <div class="p-4">
-                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-users text-xl text-green-500 mr-3"></i>
-                            <span>Nouveau groupe</span>
-                        </button>
-                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
-                            <span>Nouveau contact</span>
-                        </button>
-                        <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
-                            <span>Nouvelle communauté</span>
+        this.showLoadingModal('Chargement des contacts...');
+        getContacts().then(contacts => {
+            this.hideLoadingModal();
+            const newChatHTML = `
+                <div class="h-full w-[600px] bg-gray-900 flex flex-col border-r-2 border-gray-700 p-4 animate-slide-up">
+                    <div class="p-4 bg-gray-800 border-b-2 border-gray-700 flex justify-between items-center">
+                        <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
+                        <button id="closePreview" class="text-white hover:text-gray-300">
+                            <i class="fas fa-times text-xl"></i>
                         </button>
                     </div>
-                    <div class="p-4 border-t-2 border-gray-700">
-                        <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
-                        <div class="mt-2">
-                            ${contacts.map(contact => {
-                                const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
-                                return `
-                                    <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
-                                        <div class="${avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                                            <span class="text-white font-bold">${avatar.initial}</span>
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="p-4">
+                            <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                                <i class="fas fa-users text-xl text-green-500 mr-3"></i>
+                                <span>Nouveau groupe</span>
+                            </button>
+                            <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                                <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
+                                <span>Nouveau contact</span>
+                            </button>
+                            <button class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
+                                <i class="fas fa-address-book text-xl text-green-500 mr-3"></i>
+                                <span>Nouvelle communauté</span>
+                            </button>
+                        </div>
+                        <div class="p-4 border-t-2 border-gray-700">
+                            <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
+                            <div class="mt-2">
+                                ${contacts.map(contact => {
+                                    const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
+                                    return `
+                                        <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" data-contact-id="${contact.id}">
+                                            <div class="${avatar.color} w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                                <span class="text-white font-bold">${avatar.initial}</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
+                                                <p class="text-gray-400 text-sm">${contact.phone || ''}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
-                                            <p class="text-gray-400 text-sm">${contact.phone || ''}</p>
-                                        </div>
+                                    `;
+                                }).join('')}
+                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-white font-bold">B</span>
                                     </div>
-                                `;
-                            }).join('')}
-                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                                    <span class="text-white font-bold">B</span>
-                                </div>
-                                <div>
-                                    <p class="text-white">Bachir IIR 👀 (vous)</p>
-                                    <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
+                                    <div>
+                                        <p class="text-white">Bachir IIR 👀 (vous)</p>
+                                        <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-        this.tempPreview.innerHTML = newChatHTML;
-        this.tempPreview.style.display = 'flex';
-        const closeBtn = this.tempPreview.querySelector('#closePreview');
-        closeBtn?.addEventListener('click', () => {
-            if (this.currentView === 'newChat' && this.tempPreview) {
-                this.hideNewChatInPreview();
-                const navigationSystem = window.WhatsAppSystems?.navigationSystem;
-                navigationSystem?.showChats();
-            }
+            `;
+            this.tempPreview.innerHTML = newChatHTML;
+            this.tempPreview.style.display = 'flex';
+            const closeBtn = this.tempPreview.querySelector('#closePreview');
+            closeBtn?.addEventListener('click', () => {
+                if (this.currentView === 'newChat' && this.tempPreview) {
+                    this.hideNewChatInPreview();
+                    const navigationSystem = window.WhatsAppSystems?.navigationSystem;
+                    navigationSystem?.showChats();
+                }
+            });
+            const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
+            newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
+        }).catch(error => {
+            this.hideLoadingModal();
+            this.showModal('Erreur lors du chargement des contacts.', 'error');
         });
-        const newContactBtn = this.tempPreview.querySelector('#newContactBtn');
-        newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
     }
 
     hideNewChatInPreview() {
@@ -470,7 +462,6 @@ class ChatSystem {
         this.messagesContainer = document.getElementById('messagesContainer');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
-        this.sendIcon = document.getElementById('sendIcon');
         this.charCount = document.getElementById('charCount');
         this.typingIndicator = document.getElementById('typingIndicator');
         this.emojiBtn = document.getElementById('emojiBtn');
@@ -534,6 +525,7 @@ class ChatSystem {
             if (contactsList) {
                 contactsList.innerHTML = contacts.map(contact => {
                     const avatar = contact.avatar || { color: 'bg-green-500', initial: (contact.firstName?.charAt(0) || 'A').toUpperCase() };
+                    const unreadCount = Math.floor(Math.random() * 10); // Simule un nombre de messages non lus
                     return `
                         <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" data-contact-id="${contact.id}">
                             <div class="${avatar.color} w-12 h-12 rounded-full flex items-center justify-center mr-3">
@@ -546,12 +538,12 @@ class ChatSystem {
                                 </div>
                                 <div class="text-gray-400 text-sm">${contact.phone || ''}</div>
                             </div>
+                            ${unreadCount > 0 ? `<div class="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">${unreadCount}</div>` : ''}
                         </div>
                     `;
                 }).join('');
             }
         } catch (error) {
-            console.error('Erreur lors du chargement des contacts:', error);
             this.modalSystem.error('Erreur lors du chargement des contacts.');
         }
     }
@@ -641,7 +633,7 @@ class ChatSystem {
                 <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
                     <div class="flex items-center space-x-3">
                         <div class="${avatar.color} w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
-                            <span id="chatAvatarInitial" class="text-white font-bold">${avatar.initial}</span>
+                            <span class="text-white font-bold">${avatar.initial}</span>
                         </div>
                         <div class="text-white">
                             <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</div>
@@ -649,7 +641,7 @@ class ChatSystem {
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <!-- Boutons -->
+                        <button id="chatMenuBtn" class="text-gray-400 hover:text-white"><i class="fas fa-ellipsis-v text-xl"></i></button>
                     </div>
                 </div>
                 <div class="flex-1 p-4 overflow-y-auto scrollbar-thin" id="messagesContainerWrapper">
@@ -693,8 +685,8 @@ class ChatSystem {
 
     async loadMessages() {
         if (!this.currentChatId || !this.messagesContainer) return;
+        this.showLoadingModal('Chargement des messages...');
         try {
-            this.modalSystem.loading('Chargement des messages...');
             const messages = await getMessages(this.currentChatId);
             this.messagesContainer.innerHTML = '';
             if (messages.length === 0) {
@@ -711,26 +703,22 @@ class ChatSystem {
                 messages.forEach(message => {
                     if (message.content) {
                         this.addMessage(message);
-                    } else if (message.audio) {
+                    } else if (message.audioUrl) {
                         this.addVoiceMessage(message);
                     }
                 });
             }
             this.scrollToBottom();
-            this.modalSystem.hideLoading();
         } catch (error) {
-            console.error('Erreur lors du chargement des messages:', error);
             this.modalSystem.error('Erreur lors du chargement des messages.');
+        } finally {
+            this.hideLoadingModal();
         }
     }
 
     async handleSendMessage() {
         const message = this.messageInput.value.trim();
-        console.log('Tentative d\'envoi de message:', { message, currentChatId: this.currentChatId });
-        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) {
-            console.log('Envoi annulé: champ vide ou pas de chat sélectionné');
-            return;
-        }
+        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) return;
 
         if (message) {
             const messageData = {
@@ -741,21 +729,22 @@ class ChatSystem {
                 timestamp: new Date().toISOString(),
                 status: 'sent'
             };
-            console.log('Ajout du message localement:', messageData);
             this.addMessage(messageData);
             this.messageInput.value = '';
             this.updateCharCount('');
             this.simulateTypingIndicator();
+            this.showLoadingModal('Envoi du message...');
             try {
-                this.modalSystem.loading('Envoi du message...');
-                await saveMessage(messageData);
-                console.log('Message sauvegardé avec succès:', messageData);
-                this.modalSystem.hideLoading();
-                this.modalSystem.success('Message envoyé !');
+                const response = await saveMessage(messageData);
+                if (response && response.id) {
+                    this.hideLoadingModal();
+                    this.modalSystem.success('Message envoyé !');
+                } else {
+                    throw new Error('Réponse inattendue du serveur');
+                }
             } catch (error) {
-                console.error('Erreur lors de l\'envoi du message:', error);
-                this.modalSystem.error('Erreur lors de l\'envoi du message.');
-                // Optionnel : Supprimer le message local si l'envoi échoue
+                this.hideLoadingModal();
+                this.modalSystem.error('Erreur lors de l\'envoi. Vérifiez votre connexion.');
                 this.messagesContainer.removeChild(this.messagesContainer.lastChild);
             }
         }
@@ -771,7 +760,6 @@ class ChatSystem {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.mediaRecorder = new MediaRecorder(stream);
             this.audioChunks = [];
-            const recordingIndicator = document.getElementById('recordingIndicator');
 
             this.mediaRecorder.ondataavailable = (event) => {
                 this.audioChunks.push(event.data);
@@ -779,16 +767,28 @@ class ChatSystem {
 
             this.mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                const recordingIndicator = document.getElementById('recordingIndicator');
                 recordingIndicator.classList.add('hidden');
-                this.modalSystem.loading('Envoi du message vocal...');
+
+                this.showLoadingModal('Envoi du message vocal...');
                 try {
-                    await saveVoiceMessage(this.currentChatId, audioBlob);
-                    this.modalSystem.hideLoading();
-                    this.modalSystem.success('Message vocal envoyé !');
-                    this.addVoiceMessage({ id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', timestamp: new Date().toISOString() });
+                    const response = await saveVoiceMessage(this.currentChatId, audioBlob);
+                    if (response && response.id) {
+                        this.hideLoadingModal();
+                        this.modalSystem.success('Message vocal envoyé !');
+                        this.addVoiceMessage({
+                            id: Date.now().toString(),
+                            chatId: this.currentChatId,
+                            sender: 'me',
+                            timestamp: new Date().toISOString(),
+                            audioUrl: `${API_BASE_URL}/voice-messages/${response.id}.webm`
+                        });
+                    } else {
+                        throw new Error('Réponse inattendue du serveur');
+                    }
                 } catch (error) {
-                    console.error('Erreur lors de l\'envoi du message vocal:', error);
-                    this.modalSystem.error('Erreur lors de l\'envoi du message vocal.');
+                    this.hideLoadingModal();
+                    this.modalSystem.error('Erreur lors de l\'envoi vocal. Vérifiez votre serveur.');
                 }
                 stream.getTracks().forEach(track => track.stop());
                 this.isRecording = false;
@@ -796,13 +796,11 @@ class ChatSystem {
             };
 
             this.isRecording = true;
-            this.audioChunks = [];
             this.recordBtn.classList.add('bg-red-700');
-            recordingIndicator.classList.remove('hidden');
+            document.getElementById('recordingIndicator').classList.remove('hidden');
             this.mediaRecorder.start();
         } catch (error) {
-            console.error('Erreur lors de l\'accès au microphone:', error);
-            this.modalSystem.error('Impossible d\'accéder au microphone.');
+            this.modalSystem.error('Impossible d\'accéder au microphone. Autorisez l\'accès.');
         }
     }
 
@@ -837,7 +835,10 @@ class ChatSystem {
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
-            <audio controls class="w-full" src="${API_BASE_URL}/voice-messages/${messageData.id}.webm"></audio>
+            <audio controls class="w-full">
+                <source src="${messageData.audioUrl}" type="audio/webm">
+                Votre navigateur ne supporte pas l'audio.
+            </audio>
             <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
             ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
         `;
