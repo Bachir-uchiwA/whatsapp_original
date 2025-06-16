@@ -173,7 +173,7 @@ class ModalSystem {
             }
         });
         const saveBtn = this.tempPreview.querySelector('#saveContactBtn');
-        saveBtn?.addEventListener('click', () => {
+        saveBtn?.addEventListener('click', async () => {
             const firstName = document.getElementById('contactFirstName').value.trim();
             const lastName = document.getElementById('contactLastName').value.trim();
             const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
@@ -198,17 +198,23 @@ class ModalSystem {
                 createdAt: new Date().toISOString()
             };
             this.loading('Ajout du contact...');
-            saveContact(contactData).then(() => {
+            try {
+                await saveContact(contactData);
                 this.hideLoading();
                 this.success(`Contact ${contactData.fullName} ajouté avec succès !`);
+                this.showToast(`Nouveau contact : ${contactData.fullName}`, 'success');
                 this.hideNewContactFormInPreview();
                 this.showNewChatInPreview();
-                this.showToast(`Nouveau contact : ${contactData.fullName}`, 'success');
-            }).catch(error => {
+                // Mettre à jour la liste des contacts en temps réel
+                const chatSystem = window.WhatsAppSystems?.chatSystem;
+                if (chatSystem) {
+                    await chatSystem.updateContactsList();
+                }
+            } catch (error) {
                 console.error('Erreur lors de l\'ajout du contact:', error);
                 this.hideLoading();
                 this.error('Erreur lors de l\'ajout du contact. Veuillez réessayer.');
-            });
+            }
         });
     }
 
@@ -495,6 +501,10 @@ class ChatSystem {
     }
 
     async loadInitialData() {
+        await this.updateContactsList();
+    }
+
+    async updateContactsList() {
         try {
             const contacts = await getContacts();
             const contactsList = document.getElementById('contactsList');
