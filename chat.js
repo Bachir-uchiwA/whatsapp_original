@@ -638,7 +638,20 @@ class ChatSystem {
         if (this.currentContact && this.chatArea) {
             const avatar = this.currentContact.avatar || { color: 'bg-green-500', initial: (this.currentContact.firstName?.charAt(0) || 'A').toUpperCase() };
             this.chatArea.innerHTML = `
-               
+                <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="${avatar.color} w-10 h-10 rounded-full border-2 border-gray-700 flex items-center justify-center">
+                            <span class="text-white font-bold">${avatar.initial}</span>
+                        </div>
+                        <div class="text-white">
+                            <div class="font-semibold text-lg">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</div>
+                            <div id="typingIndicator" class="text-gray-400 text-sm hidden">En train d'écrire...</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="chatMenuBtn" class="text-gray-400 hover:text-white"><i class="fas fa-ellipsis-v text-xl"></i></button>
+                    </div>
+                </div>
                 <div class="flex-1 p-4 overflow-y-auto scrollbar-thin" id="messagesContainerWrapper">
                     <div id="messagesContainer" class="flex flex-col space-y-4">
                     </div>
