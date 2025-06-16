@@ -72,6 +72,34 @@ style.textContent = `
     .audio-player {
         width: 200px;
     }
+    .settings-search {
+        background: #2d3748;
+        border: none;
+        color: #a0aec0;
+        padding: 8px;
+        border-radius: 8px;
+        width: 100%;
+        margin-bottom: 16px;
+    }
+    .settings-item {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        color: #fff;
+        border-bottom: 1px solid #4a5568;
+    }
+    .settings-item i {
+        margin-right: 12px;
+        color: #48bb78;
+    }
+    .logout-btn {
+        background: #e53e3e;
+        color: #fff;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: 16px;
+    }
 `;
 document.head.appendChild(style);
 
@@ -477,34 +505,56 @@ class ChatSystem {
                 </button>
                 <h2 class="text-white font-semibold text-lg">Paramètres</h2>
             </div>
-            <div class="flex-1 overflow-y-auto scrollbar-thin p-4">
+            <div class="p-4 bg-gray-900 flex flex-col h-full">
+                <input type="text" placeholder="Rechercher dans les paramètres" class="settings-search mb-4">
                 <div class="flex items-center space-x-3 mb-6">
-                    <div class="bg-green-500 w-16 h-16 rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold text-2xl">A</span>
+                    <div class="relative">
+                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">B</span>
+                        </div>
+                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
                     </div>
                     <div>
-                        <p class="text-white font-semibold">Utilisateur</p>
-                        <p class="text-gray-400 text-sm">+33 6 12 34 56 78</p>
+                        <div class="flex items-center">
+                            <span class="text-white font-semibold">Bachir dev</span>
+                            <span class="text-green-500 text-sm ml-2">En ligne</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">Salut ! Justifie WhatsApp.</p>
                     </div>
                 </div>
-                <div class="space-y-2">
-                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                        <i class="fas fa-user text-gray-400"></i>
-                        <span>Profil</span>
-                    </button>
-                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                        <i class="fas fa-bell text-gray-400"></i>
-                        <span>Notifications</span>
-                    </button>
-                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                        <i class="fas fa-lock text-gray-400"></i>
+                <div class="space-y-2 flex-1">
+                    <div class="settings-item">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Compte</span>
+                        <span class="text-gray-400 ml-auto">Sécurité, informations de compte</span>
+                    </div>
+                    <div class="settings-item">
+                        <i class="fas fa-lock"></i>
                         <span>Confidentialité</span>
-                    </button>
-                    <button id="settingsLogout" class="w-full text-left p-3 text-red-400 hover:bg-gray-700 rounded-lg flex items-center space-x-3">
-                        <i class="fas fa-sign-out-alt text-red-400"></i>
-                        <span>Déconnexion</span>
-                    </button>
+                        <span class="text-gray-400 ml-auto">Contacts bloqués, messages éphémères</span>
+                    </div>
+                    <div class="settings-item">
+                        <i class="fas fa-comments"></i>
+                        <span>Discussions</span>
+                        <span class="text-gray-400 ml-auto">Thème, fond d'écran, paramètres des discussions</span>
+                    </div>
+                    <div class="settings-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifications</span>
+                        <span class="text-gray-400 ml-auto">Notifications de messages</span>
+                    </div>
+                    <div class="settings-item">
+                        <i class="fas fa-keyboard"></i>
+                        <span>Raccourcis clavier</span>
+                        <span class="text-gray-400 ml-auto">Actions rapides</span>
+                    </div>
+                    <div class="settings-item">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Aide</span>
+                        <span class="text-gray-400 ml-auto">Pages d'aide, contactez-nous, politique de confidentialité</span>
+                    </div>
                 </div>
+                <button id="settingsLogout" class="logout-btn">Se déconnecter</button>
             </div>
         `;
 
@@ -919,7 +969,6 @@ class ChatSystem {
 
             this.mediaRecorder.start();
 
-            // Update recording time display
             this.recordingTimer = setInterval(() => {
                 if (recordingTime) {
                     const seconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
