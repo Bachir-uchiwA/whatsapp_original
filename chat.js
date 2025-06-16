@@ -1,5 +1,3 @@
-chat.js
-
 const API_BASE_URL = 'https://projet-json-server-4.onrender.com';
 
 async function apiRequest(endpoint, options = {}) {
