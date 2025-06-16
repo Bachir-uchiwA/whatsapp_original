@@ -45,7 +45,7 @@ async function saveVoiceMessage(chatId, audioData) {
     return await apiRequest('/voice-messages', {
         method: 'POST',
         body: formData,
-        headers: { 'Content-Type': undefined } // Permet à fetch de gérer FormData
+        headers: { 'Content-Type': undefined }
     });
 }
 
@@ -476,26 +476,31 @@ class ChatSystem {
         this.emojiBtn = document.getElementById('emojiBtn');
         this.emojiPanel = document.getElementById('emojiPanel');
         this.attachBtn = document.getElementById('attachBtn');
+        this.recordBtn = document.getElementById('recordBtn');
         this.modalSystem = new ModalSystem();
         this.navigationSystem = new NavigationSystem();
         this.currentChatId = null;
         this.currentContact = null;
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
         window.WhatsAppSystems = { modalSystem: this.modalSystem, navigationSystem: this.navigationSystem, chatSystem: this };
         this.setupEventListeners();
         this.loadInitialData();
         this.showDefaultView();
-        this.isRecording = false;
-        this.mediaRecorder = null;
-        this.audioChunks = [];
     }
 
     setupEventListeners() {
-        this.sendBtn?.addEventListener('click', () => this.handleSendOrRecord());
+        this.sendBtn?.addEventListener('click', () => this.handleSendMessage());
         this.messageInput?.addEventListener('input', (e) => this.updateCharCount(e.target.value));
-        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSendOrRecord());
+        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && !e.shiftKey && this.handleSendMessage());
         this.emojiBtn?.addEventListener('click', () => this.toggleEmojiPanel());
         this.emojiPanel?.addEventListener('click', (e) => e.target.tagName === 'BUTTON' && this.addEmoji(e.target.textContent));
         this.attachBtn?.addEventListener('click', () => this.showAttachmentOptions());
+        this.recordBtn?.addEventListener('mousedown', () => this.startRecording());
+        this.recordBtn?.addEventListener('mouseup', () => this.stopRecording());
+        this.recordBtn?.addEventListener('touchstart', (e) => { e.preventDefault(); this.startRecording(); }, { passive: false });
+        this.recordBtn?.addEventListener('touchend', (e) => { e.preventDefault(); this.stopRecording(); }, { passive: false });
         document.getElementById('chatMenuBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this.toggleChatMenu(); });
         document.getElementById('contextMenu')?.addEventListener('click', (e) => {
             if (e.target.tagName === 'A') {
@@ -532,7 +537,7 @@ class ChatSystem {
                             <div class="flex-1">
                                 <div class="flex justify-between items-center">
                                     <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
-                                    <span class="text-gray-500 text-xs">${new Date().toLocaleTimeString()}</span>
+                                    <span class="text-gray-500 text-xs">01:33</span>
                                 </div>
                                 <div class="text-gray-400 text-sm">${contact.phone || ''}</div>
                             </div>
@@ -551,14 +556,11 @@ class ChatSystem {
             this.chatArea.innerHTML = `
                 <div class="flex-1 bg-gray-800 flex items-center justify-center">
                     <div class="text-center max-w-md">
-                        <!-- WhatsApp Web Illustration -->
                         <div class="mb-8 relative">
                             <div class="relative mx-auto w-80 h-60">
-                                <!-- Grand nuage de fond -->
                                 <svg class="absolute left-0 top-8 z-0" width="320" height="120" viewBox="0 0 320 120" fill="none">
                                     <ellipse cx="160" cy="60" rx="140" ry="55" fill="#23272b"/>
                                 </svg>
-                                <!-- Petits nuages décoratifs -->
                                 <svg class="absolute left-16 top-32 z-10" width="40" height="20" viewBox="0 0 40 20" fill="none">
                                     <ellipse cx="20" cy="10" rx="18" ry="8" fill="#374151" opacity="0.7"/>
                                 </svg>
@@ -570,9 +572,7 @@ class ChatSystem {
                                 </svg>
                                 <div class="absolute left-4 top-16 w-20 h-32 rounded-xl border-2 border-teal-200 bg-gray-900 shadow-lg z-20" style="transform: rotate(-10deg);">
                                     <div class="w-full h-full flex flex-col items-center justify-center">
-                                        <!-- Caméra frontale -->
                                         <div class="w-3 h-3 rounded-full border-2 border-gray-700 mt-2 mb-2"></div>
-                                        <!-- Signal barré + X -->
                                         <div class="flex flex-col items-center mt-2">
                                             <div class="flex space-x-0.5 mb-1">
                                                 <div class="w-1 h-2 bg-gray-500 rounded"></div>
@@ -585,7 +585,6 @@ class ChatSystem {
                                     </div>
                                 </div>
                                 <div class="absolute right-2 top-10 w-40 h-28 z-20" style="transform: rotate(3deg);">
-                                    <!-- Écran -->
                                     <div class="w-40 h-20 bg-gray-100 rounded-t-lg border-2 border-teal-200 flex items-center justify-center">
                                         <div class="w-12 h-12 bg-emerald-400 rounded-full flex items-center justify-center">
                                             <svg width="28" height="28" fill="none" viewBox="0 0 28 28">
@@ -594,7 +593,6 @@ class ChatSystem {
                                             </svg>
                                         </div>
                                     </div>
-                                    <!-- Base -->
                                     <div class="w-44 h-3 bg-teal-200 rounded-b-lg -mt-1 mx-auto"></div>
                                 </div>
                             </div>
@@ -606,7 +604,6 @@ class ChatSystem {
                         <p class="text-gray-300 text-sm leading-relaxed">
                             Utilisez WhatsApp sur un maximum de 4 appareils et 1 téléphone, simultanément.
                         </p>
-                        <!-- Privacy Notice -->
                         <div class="flex items-center justify-center mt-8 text-gray-400 text-xs">
                             <i class="fas fa-lock mr-2"></i>
                             <span>Vos messages personnels sont chiffrés de bout en bout</span>
@@ -620,10 +617,12 @@ class ChatSystem {
     updateCharCount(text) {
         const count = text.length;
         this.charCount.textContent = `${count}`;
-        if (count > 0 || this.isRecording) {
-            this.sendIcon.className = 'fas fa-paper-plane text-xl';
+        if (count > 0) {
+            this.sendBtn.classList.remove('hidden');
+            this.recordBtn.classList.add('hidden');
         } else {
-            this.sendIcon.className = 'fas fa-microphone text-xl';
+            this.sendBtn.classList.add('hidden');
+            this.recordBtn.classList.remove('hidden');
         }
     }
 
@@ -648,7 +647,7 @@ class ChatSystem {
                         <!-- Boutons -->
                     </div>
                 </div>
-                <div class="flex-1 p-4 overflow-y-auto scrollbar-thin">
+                <div class="flex-1 p-4 overflow-y-auto scrollbar-thin" id="messagesContainerWrapper">
                     <div id="messagesContainer" class="flex flex-col space-y-4">
                     </div>
                 </div>
@@ -664,8 +663,11 @@ class ChatSystem {
                             <input id="messageInput" type="text" placeholder="Écrivez un message" class="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200">
                             <span id="charCount" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">0</span>
                         </div>
-                        <button id="sendBtn" class="bg-green-600 hover:bg-green-700 text-white rounded-full p-2 transition-colors duration-200">
-                            <i id="sendIcon" class="fas fa-microphone text-xl"></i>
+                        <button id="sendBtn" class="bg-green-600 hover:bg-green-700 text-white rounded-full p-2 hidden transition-colors duration-200">
+                            <i class="fas fa-paper-plane text-xl"></i>
+                        </button>
+                        <button id="recordBtn" class="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 flex items-center justify-center transition-colors duration-200">
+                            <i class="fas fa-microphone text-xl"></i>
                         </button>
                     </div>
                     <div id="emojiPanel" class="hidden absolute bottom-20 right-4 bg-gray-800 rounded-lg p-4 shadow-lg grid grid-cols-6 gap-2">
@@ -676,6 +678,7 @@ class ChatSystem {
                         <button class="text-2xl">🙌</button>
                         <button class="text-2xl">🎉</button>
                     </div>
+                    <div id="recordingIndicator" class="hidden text-red-400 text-sm mt-2">Enregistrement en cours... <span class="recording-dot animate-pulse"></span></div>
                 </div>
             `;
             this.setupEventListeners();
@@ -707,20 +710,28 @@ class ChatSystem {
                     }
                 });
             }
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            this.scrollToBottom();
         } catch (error) {
             console.error('Erreur lors du chargement des messages:', error);
             this.modalSystem.error('Erreur lors du chargement des messages.');
         }
     }
 
-    handleSendOrRecord() {
+    handleSendMessage() {
+        const message = this.messageInput.value.trim();
+        if (!message && !this.isRecording || !this.currentChatId || !this.messagesContainer) return;
+
+        if (message) {
+            const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
+            this.addMessage(messageData);
+            this.messageInput.value = '';
+            this.updateCharCount('');
+            this.simulateTypingIndicator();
+            saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
+        }
+
         if (this.isRecording) {
             this.stopRecording();
-        } else if (this.messageInput.value.trim() || this.audioChunks.length > 0) {
-            this.handleSend();
-        } else {
-            this.startRecording();
         }
     }
 
@@ -730,6 +741,7 @@ class ChatSystem {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.mediaRecorder = new MediaRecorder(stream);
             this.audioChunks = [];
+            const recordingIndicator = document.getElementById('recordingIndicator');
 
             this.mediaRecorder.ondataavailable = (event) => {
                 this.audioChunks.push(event.data);
@@ -737,6 +749,7 @@ class ChatSystem {
 
             this.mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                recordingIndicator.classList.add('hidden');
                 this.modalSystem.loading('Envoi du message vocal...');
                 try {
                     await saveVoiceMessage(this.currentChatId, audioBlob);
@@ -748,12 +761,15 @@ class ChatSystem {
                     this.modalSystem.error('Erreur lors de l\'envoi du message vocal.');
                 }
                 stream.getTracks().forEach(track => track.stop());
+                this.isRecording = false;
+                this.recordBtn.classList.remove('bg-red-700');
             };
 
             this.isRecording = true;
-            this.sendIcon.className = 'fas fa-stop text-xl';
+            this.audioChunks = [];
+            this.recordBtn.classList.add('bg-red-700');
+            recordingIndicator.classList.remove('hidden');
             this.mediaRecorder.start();
-            this.modalSystem.info('Enregistrement en cours...');
         } catch (error) {
             console.error('Erreur lors de l\'accès au microphone:', error);
             this.modalSystem.error('Impossible d\'accéder au microphone.');
@@ -763,27 +779,8 @@ class ChatSystem {
     stopRecording() {
         if (!this.isRecording || !this.mediaRecorder) return;
         this.mediaRecorder.stop();
-        this.isRecording = false;
-        this.sendIcon.className = 'fas fa-microphone text-xl';
-        this.modalSystem.hideModal();
-    }
-
-    handleSend() {
-        const message = this.messageInput.value.trim();
-        if (!message && this.audioChunks.length === 0 || !this.currentChatId || !this.messagesContainer) return;
-        
-        if (message) {
-            const messageData = { id: Date.now().toString(), chatId: this.currentChatId, sender: 'me', content: message, timestamp: new Date().toISOString(), status: 'sent' };
-            this.addMessage(messageData);
-            this.messageInput.value = '';
-            this.updateCharCount('');
-            this.simulateTypingIndicator();
-            saveMessage(messageData).catch(error => console.error('Erreur lors de l\'envoi du message:', error));
-        }
-
-        if (this.audioChunks.length > 0) {
-            this.stopRecording();
-        }
+        this.recordBtn.classList.remove('bg-red-700');
+        document.getElementById('recordingIndicator').classList.add('hidden');
     }
 
     addMessage(messageData) {
@@ -794,11 +791,12 @@ class ChatSystem {
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
-            <div class="text-white">${messageData.content}</div>
+            <div class="text-white break-words">${messageData.content}</div>
             <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
+            ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
         `;
         this.messagesContainer.appendChild(messageElement);
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        this.scrollToBottom();
     }
 
     addVoiceMessage(messageData) {
@@ -809,11 +807,12 @@ class ChatSystem {
         const messageElement = document.createElement('div');
         messageElement.className = `p-3 rounded-lg max-w-[70%] ${messageData.sender === 'me' ? 'bg-green-600 self-end' : 'bg-gray-700 self-start'}`;
         messageElement.innerHTML = `
-            <audio controls src="${API_BASE_URL}/voice-messages/${messageData.id}.webm"></audio>
+            <audio controls class="w-full" src="${API_BASE_URL}/voice-messages/${messageData.id}.webm"></audio>
             <div class="text-xs text-gray-300 mt-1">${new Date(messageData.timestamp).toLocaleTimeString()}</div>
+            ${messageData.status === 'sent' ? '<i class="fas fa-check-double text-gray-300 text-xs ml-1"></i>' : ''}
         `;
         this.messagesContainer.appendChild(messageElement);
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        this.scrollToBottom();
     }
 
     simulateTypingIndicator() {
@@ -874,6 +873,11 @@ class ChatSystem {
             this.modalSystem.success('Déconnexion réussie.');
             setTimeout(() => window.location.href = '/login.html', 1000);
         }, 'question');
+    }
+
+    scrollToBottom() {
+        const wrapper = document.getElementById('messagesContainerWrapper');
+        if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
     }
 }
 
