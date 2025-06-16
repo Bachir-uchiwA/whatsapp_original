@@ -84,7 +84,6 @@ class EmojiManager {
         const picker = document.getElementById('emojiPicker');
         if (!picker) return;
 
-        // Créer les onglets de catégories
         const categories = document.createElement('div');
         categories.className = 'flex gap-2 mb-3 border-b border-gray-600 pb-2';
         
@@ -108,7 +107,6 @@ class EmojiManager {
         this.currentCategory = category;
         this.updateEmojiGrid();
         
-        // Mettre à jour les onglets
         const tabs = document.querySelectorAll('#emojiPicker button');
         tabs.forEach((tab, index) => {
             const categories = Object.keys(this.emojis);
@@ -144,7 +142,6 @@ class EmojiManager {
             messageInput.focus();
             messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
             
-            // Déclencher l'événement input pour mettre à jour le compteur
             messageInput.dispatchEvent(new Event('input'));
         }
         this.hide();
@@ -175,7 +172,6 @@ class EmojiManager {
     }
 
     setupEventListeners() {
-        // Fermer le picker en cliquant à l'extérieur
         document.addEventListener('click', (e) => {
             const picker = document.getElementById('emojiPicker');
             const emojiBtn = document.getElementById('emojiBtn');
@@ -245,7 +241,6 @@ class MessageManager {
 
         let html = '';
 
-        // Séparateur de date
         if (showDate) {
             html += `
                 <div class="date-separator">
@@ -254,7 +249,6 @@ class MessageManager {
             `;
         }
 
-        // Message bubble
         const isOwn = message.sender === 'me';
         const bubbleClass = isOwn ? 'own' : 'other';
         
@@ -268,7 +262,6 @@ class MessageManager {
                         ${isOwn ? `<span class="message-status">${this.getMessageStatusIcon(message.status)}</span>` : ''}
                     </div>
 
-                    <!-- Menu contextuel -->
                     <div class="message-menu">
                         <button onclick="messageManager.replyToMessage('${message.id}')" class="p-2 text-gray-400 hover:text-white rounded" title="Répondre">
                             <i class="fas fa-reply text-sm"></i>
@@ -281,7 +274,6 @@ class MessageManager {
                         </button>
                     </div>
 
-                    <!-- Réactions rapides -->
                     <div class="quick-reactions">
                         <button onclick="messageManager.addReaction('${message.id}', '👍')" class="text-lg hover:scale-110 transition-transform">👍</button>
                         <button onclick="messageManager.addReaction('${message.id}', '❤️')" class="text-lg hover:scale-110 transition-transform">❤️</button>
@@ -291,7 +283,6 @@ class MessageManager {
                         <button onclick="messageManager.addReaction('${message.id}', '🙏')" class="text-lg hover:scale-110 transition-transform">🙏</button>
                     </div>
 
-                    <!-- Réactions existantes -->
                     ${this.renderReactions(message.reactions)}
                 </div>
             </div>
@@ -329,7 +320,7 @@ class MessageManager {
         
         return `
             <div class="voice-message">
-                <button class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white hover:bg-green-700 transition-colors" onclick="messageManager.playVoiceMessage('${message.id}')">
+                <button class="play-btn w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white hover:bg-green-700 transition-colors" data-message-id="${message.id}" data-playing="false">
                     <i class="fas fa-play text-sm"></i>
                 </button>
                 <div class="voice-waveform">
@@ -372,23 +363,19 @@ class MessageManager {
     }
 
     formatMessageText(text) {
-        // Formatage basique du texte (liens, mentions, etc.)
         return text
-            .replace(/\*([^*]+)\*/g, '<strong>$1</strong>') // Gras
-            .replace(/_([^_]+)_/g, '<em>$1</em>') // Italique
-            .replace(/~([^~]+)~/g, '<del>$1</del>') // Barré
-            .replace(/```([^`]+)```/g, '<code class="bg-gray-200 px-1 rounded">$1</code>'); // Code
+            .replace(/\*([^*]+)\*/g, '<strong>$1</strong>')
+            .replace(/_([^_]+)_/g, '<em>$1</em>')
+            .replace(/~([^~]+)~/g, '<del>$1</del>')
+            .replace(/```([^`]+)```/g, '<code class="bg-gray-200 px-1 rounded">$1</code>');
     }
 
     addReaction(messageId, emoji) {
         console.log(`Ajout de la réaction ${emoji} au message ${messageId}`);
-        // Ici, vous pouvez implémenter la logique pour sauvegarder la réaction
-        // et mettre à jour l'affichage
     }
 
     replyToMessage(messageId) {
         console.log(`Répondre au message ${messageId}`);
-        // Implémenter la logique de réponse
     }
 
     showQuickReactions(messageId) {
@@ -399,9 +386,48 @@ class MessageManager {
         console.log(`Afficher les options pour ${messageId}`);
     }
 
-    playVoiceMessage(messageId) {
-        console.log(`Lire le message vocal ${messageId}`);
-        // Implémenter la lecture audio
+    async playVoiceMessage(messageId) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        const playBtn = messageElement.querySelector('.play-btn');
+        const isPlaying = playBtn.dataset.playing === 'true';
+        
+        if (isPlaying) {
+            const audio = document.getElementById(`audio-${messageId}`);
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+                playBtn.dataset.playing = 'false';
+                playBtn.innerHTML = '<i class="fas fa-play text-sm"></i>';
+            }
+            return;
+        }
+
+        try {
+            const messages = await ApiManager.getMessages(this.currentChatId);
+            const message = messages.find(m => m.id === messageId);
+            if (!message || !message.audioUrl) throw new Error('Audio not found');
+
+            let audio = document.getElementById(`audio-${messageId}`);
+            if (!audio) {
+                audio = document.createElement('audio');
+                audio.id = `audio-${messageId}`;
+                audio.src = message.audioUrl;
+                audio.style.display = 'none';
+                messageElement.appendChild(audio);
+            }
+
+            audio.play();
+            playBtn.dataset.playing = 'true';
+            playBtn.innerHTML = '<i class="fas fa-pause text-sm"></i>';
+
+            audio.onended = () => {
+                playBtn.dataset.playing = 'false';
+                playBtn.innerHTML = '<i class="fas fa-play text-sm"></i>';
+            };
+        } catch (error) {
+            console.error('Erreur lors de la lecture du message vocal:', error);
+            alert('Impossible de lire le message vocal.');
+        }
     }
 
     showTypingIndicator(contactName) {
@@ -440,7 +466,6 @@ class MessageManager {
     startTyping() {
         if (!this.isTyping) {
             this.isTyping = true;
-            // Envoyer l'indicateur de frappe au serveur
         }
 
         clearTimeout(this.typingTimeout);
@@ -453,7 +478,6 @@ class MessageManager {
         if (this.isTyping) {
             this.isTyping = false;
             clearTimeout(this.typingTimeout);
-            // Arrêter l'indicateur de frappe sur le serveur
         }
     }
 }
@@ -468,6 +492,7 @@ class ChatSystem {
         this.isRecording = false;
         this.mediaRecorder = null;
         this.audioChunks = [];
+        this.pollingInterval = null;
         
         this.init();
     }
@@ -548,7 +573,6 @@ class ChatSystem {
     }
 
     getLastMessage(contactId) {
-        // Simuler le dernier message pour la démo
         return {
             content: "Dernier message...",
             timestamp: new Date().toISOString()
@@ -556,6 +580,7 @@ class ChatSystem {
     }
 
     async selectContact(contactId) {
+        this.stopPolling();
         try {
             const contacts = await ApiManager.getContacts();
             this.currentContact = contacts.find(c => c.id === contactId);
@@ -564,6 +589,7 @@ class ChatSystem {
             if (this.currentContact) {
                 this.renderChatInterface();
                 await this.loadMessages();
+                this.startPolling();
             }
         } catch (error) {
             console.error('Erreur lors de la sélection du contact:', error);
@@ -580,7 +606,6 @@ class ChatSystem {
         };
 
         chatArea.innerHTML = `
-            <!-- En-tête du chat -->
             <div class="bg-gray-900 p-4 flex items-center justify-between border-b border-gray-700">
                 <div class="flex items-center gap-3">
                     <div class="relative">
@@ -622,12 +647,9 @@ class ChatSystem {
                 </div>
             </div>
 
-            <!-- Zone des messages -->
             <div class="flex-1 overflow-y-auto scrollbar-thin p-4" id="messagesContainer">
-                <!-- Les messages seront chargés ici -->
             </div>
 
-            <!-- Zone de saisie -->
             <div class="bg-gray-900 p-4 border-t border-gray-700">
                 <div class="flex items-center gap-3">
                     <button id="emojiBtn" class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors" title="Emoji">
@@ -671,9 +693,7 @@ class ChatSystem {
     }
 
     setupEventListeners() {
-        // Événements globaux
         document.addEventListener('click', (e) => {
-            // Fermer l'emoji picker si on clique ailleurs
             if (!e.target.closest('#emojiPicker') && !e.target.closest('#emojiBtn')) {
                 this.emojiManager.hide();
             }
@@ -700,7 +720,6 @@ class ChatSystem {
                     recordBtn.classList.remove('hidden');
                 }
 
-                // Indicateur de frappe
                 this.messageManager.startTyping();
             });
 
@@ -732,6 +751,17 @@ class ChatSystem {
         if (emojiBtn) {
             emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
         }
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+            messagesContainer.addEventListener('click', (e) => {
+                const playBtn = e.target.closest('.play-btn');
+                if (playBtn) {
+                    const messageId = playBtn.dataset.messageId;
+                    this.messageManager.playVoiceMessage(messageId);
+                }
+            });
+        }
     }
 
     async sendMessage() {
@@ -748,29 +778,20 @@ class ChatSystem {
             status: 'sending'
         };
 
-        // Ajouter le message à l'interface immédiatement
         this.addMessageToInterface(messageData);
         
-        // Vider le champ de saisie
         messageInput.value = '';
         document.getElementById('charCount').textContent = '0';
         document.getElementById('sendBtn').classList.add('hidden');
         document.getElementById('recordBtn').classList.remove('hidden');
 
-        // Arrêter l'indicateur de frappe
         this.messageManager.stopTyping();
 
         try {
-            // Sauvegarder le message
             const savedMessage = await ApiManager.saveMessage(messageData);
-            
-            // Mettre à jour le statut du message
             this.updateMessageStatus(messageData.id, 'sent');
-            
-            // Simuler la livraison et la lecture
             setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
             setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
-            
         } catch (error) {
             console.error('Erreur lors de l\'envoi du message:', error);
             this.updateMessageStatus(messageData.id, 'failed');
@@ -781,7 +802,6 @@ class ChatSystem {
         const messagesContainer = document.getElementById('messagesContainer');
         if (!messagesContainer) return;
 
-        // Vérifier s'il faut afficher un séparateur de date
         const lastMessage = messagesContainer.lastElementChild;
         let showDate = true;
         
@@ -856,23 +876,23 @@ class ChatSystem {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             this.audioChunks = [];
 
             this.mediaRecorder.ondataavailable = (event) => {
-                this.audioChunks.push(event.data);
+                if (event.data.size > 0) this.audioChunks.push(event.data);
             };
 
             this.mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
                 await this.sendVoiceMessage(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
+                this.audioChunks = [];
             };
 
             this.isRecording = true;
             this.mediaRecorder.start();
             
-            // Afficher l'indicateur d'enregistrement
             const indicator = document.getElementById('recordingIndicator');
             const recordBtn = document.getElementById('recordBtn');
             
@@ -882,9 +902,7 @@ class ChatSystem {
                 recordBtn.classList.add('bg-red-600');
             }
 
-            // Démarrer le chronomètre
             this.startRecordingTimer();
-
         } catch (error) {
             console.error('Erreur d\'accès au microphone:', error);
             alert('Impossible d\'accéder au microphone. Veuillez autoriser l\'accès.');
@@ -897,7 +915,6 @@ class ChatSystem {
         this.isRecording = false;
         this.mediaRecorder.stop();
         
-        // Masquer l'indicateur d'enregistrement
         const indicator = document.getElementById('recordingIndicator');
         const recordBtn = document.getElementById('recordBtn');
         
@@ -931,33 +948,37 @@ class ChatSystem {
     }
 
     async sendVoiceMessage(audioBlob) {
-        const messageData = {
-            id: Date.now().toString(),
-            chatId: this.currentChatId,
-            sender: 'me',
-            type: 'voice',
-            timestamp: new Date().toISOString(),
-            status: 'sending',
-            audioDuration: 15 // Durée simulée
-        };
+        if (!this.currentChatId) return;
 
-        this.addMessageToInterface(messageData);
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+            const base64Audio = reader.result;
 
-        try {
-            // Ici, vous pourriez uploader le fichier audio
-            // const savedMessage = await ApiManager.saveVoiceMessage(this.currentChatId, audioBlob);
-            
-            // Pour la démo, on simule juste la sauvegarde
-            setTimeout(() => {
+            const messageData = {
+                id: Date.now().toString(),
+                chatId: this.currentChatId,
+                sender: 'me',
+                type: 'voice',
+                timestamp: new Date().toISOString(),
+                status: 'sending',
+                audioUrl: base64Audio,
+                audioDuration: Math.round(audioBlob.size / 1000) // Approx duration
+            };
+
+            this.addMessageToInterface(messageData);
+
+            try {
+                const savedMessage = await ApiManager.saveMessage(messageData);
                 this.updateMessageStatus(messageData.id, 'sent');
                 setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
                 setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
-            }, 500);
-            
-        } catch (error) {
-            console.error('Erreur lors de l\'envoi du message vocal:', error);
-            this.updateMessageStatus(messageData.id, 'failed');
-        }
+            } catch (error) {
+                console.error('Erreur lors de l\'envoi du message vocal:', error);
+                this.updateMessageStatus(messageData.id, 'failed');
+                alert('Erreur lors de l\'envoi du message vocal.');
+            }
+        };
     }
 
     scrollToBottom() {
@@ -967,7 +988,51 @@ class ChatSystem {
         }
     }
 
+    startPolling() {
+        if (this.pollingInterval) return;
+        this.pollingInterval = setInterval(async () => {
+            if (this.currentChatId) {
+                try {
+                    const messages = await ApiManager.getMessages(this.currentChatId);
+                    this.updateMessages(messages);
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }
+        }, 5000);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    updateMessages(newMessages) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        const currentMessageIds = Array.from(messagesContainer.querySelectorAll('[data-message-id]')).map(
+            el => el.dataset.messageId
+        );
+
+        newMessages.forEach((message, index) => {
+            if (!currentMessageIds.includes(message.id)) {
+                const prevMessage = index > 0 ? newMessages[index - 1] : null;
+                const showDate = !prevMessage || !this.isSameDay(new Date(prevMessage.timestamp), new Date(message.timestamp));
+                
+                const messageElement = this.messageManager.createMessageElement(message, showDate);
+                messageElement.dataset.timestamp = message.timestamp;
+                messagesContainer.appendChild(messageElement);
+            }
+        });
+
+        this.scrollToBottom();
+    }
+
     showDefaultView() {
+        this.stopPolling();
         const chatArea = document.getElementById('chatArea');
         if (!chatArea) return;
 
