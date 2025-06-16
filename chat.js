@@ -1,653 +1,1177 @@
 const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
-async function apiRequest(endpoint, options = {}) {
-    try {
-        const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: { ...options.headers, ...headers },
-            ...options,
-            credentials: 'omit'
-        });
+// Adding CSS styles for messages and emoji picker
+const style = document.createElement('style');
+style.textContent = `
+    .message-group { max-width: 100%; }
+    .message-bubble {
+        max-width: 70%;
+        border-radius: 12px;
+        position: relative;
+        color: #fff;
+    }
+    .message-bubble.own {
+        background: #056162;
+        margin-left: auto;
+    }
+    .message-bubble.other {
+        background: #262d31;
+    }
+    .message-time {
+        font-size: 0.75rem;
+        color: #a0aec0;
+        text-align: right;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+    }
+    .message-status {
+        display: inline-flex;
+        align-items: center;
+    }
+    .date-separator {
+        text-align: center;
+        margin: 16px 0;
+    }
+    .date-separator span {
+        background: #2d3748;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        color: #a0aec0;
+    }
+    .voice-message, .audio-message {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .voice-waveform {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+        flex-grow: 1;
+    }
+    .wave-bar {
+        width: 3px;
+        background: #a0aec0;
+        border-radius: 2px;
+    }
+    .emoji-btn {
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+    }
+    .emoji-btn:hover {
+        background: #4a5568;
+        border-radius: 4px;
+    }
+    .audio-player {
+        width: 200px;
+    }
+`;
+document.head.appendChild(style);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+// Système de gestion des API
+class ApiManager {
+    static async request(endpoint, options = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    ...options.headers 
+                },
+                ...options,
+                credentials: 'omit'
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
         }
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
-    }
-}
-
-async function saveContact(contactData) {
-    return await apiRequest('/contacts', { method: 'POST', body: JSON.stringify(contactData) });
-}
-
-async function getContacts() {
-    return await apiRequest('/contacts');
-}
-
-async function saveMessage(messageData) {
-    return await apiRequest('/messages', { method: 'POST', body: JSON.stringify(messageData) });
-}
-
-async function getMessages(chatId = null) {
-    const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
-    return await apiRequest(endpoint);
-}
-
-async function saveVoiceMessage(chatId, metadata) {
-    const voiceMessageData = {
-        id: Date.now().toString(),
-        chatId,
-        duration: metadata.duration || 10,
-        timestamp: new Date().toISOString(),
-        audioUrl: `https://example.com/voice-messages/${Date.now()}.webm`
-    };
-    return await apiRequest('/voice-messages', {
-        method: 'POST',
-        body: JSON.stringify(voiceMessageData)
-    });
-}
-
-class ModalSystem {
-    constructor() {
-        this.modal = document.getElementById('modal');
-        this.confirmModal = document.getElementById('confirm-modal');
-        this.loadingModal = document.getElementById('loading-modal');
-        this.previewPanel = document.getElementById('previewPanel');
-        this.currentView = null;
-        this.setupEventListeners();
     }
 
-    setupEventListeners() {
-        document.getElementById('modal-close')?.addEventListener('click', () => this.hideModal());
-        document.getElementById('confirm-cancel')?.addEventListener('click', () => this.hideConfirmModal());
-        [this.modal, this.confirmModal, this.loadingModal].forEach(modal => {
-            modal?.addEventListener('click', (e) => e.target === modal && this.hideAllModals());
+    static async getContacts() {
+        return await this.request('/contacts');
+    }
+
+    static async addContact(contactData) {
+        return await this.request('/contacts', {
+            method: 'POST',
+            body: JSON.stringify(contactData)
         });
-        document.addEventListener('keydown', (e) => e.key === 'Escape' && this.hideAllModals());
     }
 
-    showModal(message, type = 'info') {
-        const messageEl = document.getElementById('modal-message');
-        const iconEl = document.getElementById('modal-icon');
-        if (!messageEl || !iconEl) return;
-        messageEl.textContent = message;
-        const icons = {
-            success: '<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"><i class="fas fa-check text-white text-xl"></i></div>',
-            error: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-times text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            info: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-info text-white text-xl"></i></div>'
-        };
-        iconEl.innerHTML = icons[type] || icons.info;
-        this.modal.classList.remove('hidden');
-        this.modal.classList.add('animate-fade-in');
-        if (type === 'success') setTimeout(() => this.hideModal(), 3000);
+    static async getMessages(chatId = null) {
+        const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
+        return await this.request(endpoint);
     }
 
-    hideModal() {
-        this.modal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.modal.classList.add('hidden');
-            this.modal.classList.remove('animate-fade-in', 'animate-fade-out');
-        }, 200);
+    static async saveMessage(messageData) {
+        return await this.request('/messages', { 
+            method: 'POST', 
+            body: JSON.stringify(messageData) 
+        });
     }
 
-    showConfirmModal(title, message, onConfirm, type = 'warning') {
-        const titleEl = document.getElementById('confirm-title');
-        const messageEl = document.getElementById('confirm-message');
-        const iconEl = document.getElementById('confirm-icon');
-        const confirmBtn = document.getElementById('confirm-ok');
-        if (!titleEl || !messageEl || !iconEl || !confirmBtn) return;
-        titleEl.textContent = title;
-        messageEl.textContent = message;
-        const icons = {
-            danger: '<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-white text-xl"></i></div>',
-            warning: '<div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center"><i class="fas fa-exclamation text-white text-xl"></i></div>',
-            question: '<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center"><i class="fas fa-question text-white text-xl"></i></div>'
-        };
-        iconEl.innerHTML = icons[type] || icons.warning;
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        newConfirmBtn.addEventListener('click', () => { this.hideConfirmModal(); onConfirm && onConfirm(); });
-        this.confirmModal.classList.remove('hidden');
-        this.confirmModal.classList.add('animate-fade-in');
+    static async updateMessageStatus(messageId, status) {
+        return await this.request(`/messages/${messageId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+        });
     }
 
-    hideConfirmModal() {
-        this.confirmModal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.confirmModal.classList.add('hidden');
-            this.confirmModal.classList.remove('animate-fade-in', 'animate-fade-out');
-        }, 200);
-    }
-
-    showLoadingModal(message = 'Chargement...') {
-        const messageEl = document.getElementById('loading-message');
-        if (!messageEl) return;
-        messageEl.textContent = message;
-        this.loadingModal.classList.remove('hidden');
-        this.loadingModal.classList.add('animate-scale-in');
-    }
-
-    hideLoadingModal() {
-        this.loadingModal.classList.add('animate-fade-out');
-        setTimeout(() => {
-            this.loadingModal.classList.add('hidden');
-            this.loadingModal.classList.remove('animate-scale-in', 'animate-fade-out');
-        }, 200);
-    }
-
-    hideAllModals() {
-        this.hideModal();
-        this.hideConfirmModal();
-        this.hideLoadingModal();
-        window.WhatsAppSystems.navigationSystem.hidePreview();
+    static async deleteSession() {
+        return await this.request('/sessions/1', {
+            method: 'DELETE'
+        });
     }
 }
 
-class NavigationSystem {
-    constructor(modalSystem, chatSystem) {
-        this.modalSystem = modalSystem;
-        this.chatSystem = chatSystem;
-        this.views = {
-            sidebarChats: document.getElementById('sidebarChats'),
-            chatArea: document.getElementById('chatArea'),
-            sidebarSettings: document.getElementById('sidebarSettings'),
-            previewPanel: document.getElementById('previewPanel')
+// Système de gestion des emojis
+class EmojiManager {
+    constructor() {
+        this.emojis = {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇'],
+            gestures: ['👍', '👎', '👌', '✌️', '🤞', '🤘', '🤙', '👈', '👉', '👆'],
+            hearts: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔']
         };
-        this.navigationStack = ['sidebarChats'];
-        this.currentPreviewView = null;
+        this.currentCategory = 'smileys';
+        this.isVisible = false;
+        this.init();
+    }
+
+    init() {
+        this.createEmojiPicker();
         this.setupEventListeners();
     }
 
+    createEmojiPicker() {
+        const picker = document.getElementById('emojiPicker');
+        if (!picker) return;
+
+        const categories = document.createElement('div');
+        categories.className = 'flex gap-2 mb-3 border-b border-gray-600 pb-2';
+        
+        Object.keys(this.emojis).forEach(category => {
+            const tab = document.createElement('button');
+            tab.className = `px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                category === this.currentCategory ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`;
+            tab.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+            tab.onclick = () => this.switchCategory(category);
+            categories.appendChild(tab);
+        });
+
+        picker.appendChild(categories);
+        this.updateEmojiGrid();
+    }
+
+    switchCategory(category) {
+        this.currentCategory = category;
+        this.updateEmojiGrid();
+        const tabs = document.querySelectorAll('#emojiPicker button');
+        tabs.forEach(tab => {
+            tab.className = `px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                tab.textContent.toLowerCase() === category ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`;
+        });
+    }
+
+    updateEmojiGrid() {
+        const grid = document.getElementById('emojiGrid');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        this.emojis[this.currentCategory].forEach(emoji => {
+            const button = document.createElement('button');
+            button.className = 'emoji-btn';
+            button.textContent = emoji;
+            button.onclick = () => this.selectEmoji(emoji);
+            grid.appendChild(button);
+        });
+    }
+
+    selectEmoji(emoji) {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            const cursorPos = messageInput.selectionStart;
+            messageInput.value = messageInput.value.substring(0, cursorPos) + emoji + messageInput.value.substring(cursorPos);
+            messageInput.focus();
+            messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+            messageInput.dispatchEvent(new Event('input'));
+        }
+        this.hide();
+    }
+
+    show() {
+        const picker = document.getElementById('emojiPicker');
+        if (picker) {
+            picker.classList.remove('hidden');
+            this.isVisible = true;
+            const rect = picker.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                picker.style.left = 'auto';
+                picker.style.right = '0';
+            }
+        }
+    }
+
+    hide() {
+        const picker = document.getElementById('emojiPicker');
+        if (picker) {
+            picker.classList.add('hidden');
+            this.isVisible = false;
+        }
+    }
+
+    toggle() {
+        this.isVisible ? this.hide() : this.show();
+    }
+
     setupEventListeners() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && this.navigationStack.length > 1) {
-                this.goBack();
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('emojiPicker');
+            const emojiBtn = document.getElementById('emojiBtn');
+            if (picker && !picker.contains(e.target) && e.target !== emojiBtn) {
+                this.hide();
             }
         });
-        document.getElementById('sidebarChatIcon')?.addEventListener('click', () => this.navigateTo('sidebarChats'));
-        document.getElementById('settingsIcon')?.addEventListener('click', () => this.navigateTo('sidebarSettings'));
-        document.getElementById('newChatBtn')?.addEventListener('click', () => this.showPreview('newChat'));
-        document.getElementById('menuBtn')?.addEventListener('click', () => this.toggleContextMenu());
-        document.getElementById('logoutBtn')?.addEventListener('click', () => this.chatSystem.logout());
-        document.getElementById('settingsLogout')?.addEventListener('click', () => this.chatSystem.logout());
+    }
+}
+
+// Système de gestion des messages
+class MessageManager {
+    constructor() {
+        this.messages = new Map();
+        this.currentChatId = null;
+    }
+
+    formatTime(timestamp) {
+        return new Date(timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) return "Aujourd'hui";
+        if (date.toDateString() === yesterday.toDateString()) return "Hier";
+        return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+
+    getMessageStatusIcon(status) {
+        switch (status) {
+            case 'sending': return '<i class="fas fa-clock text-gray-400 text-xs"></i>';
+            case 'sent': return '<i class="fas fa-check text-gray-400 text-xs"></i>';
+            case 'delivered': return '<i class="fas fa-check-double text-gray-400 text-xs"></i>';
+            case 'read': return '<i class="fas fa-check-double text-blue-400 text-xs"></i>';
+            default: return '';
+        }
+    }
+
+    createMessageElement(message, showDate = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-group mb-4';
+        messageDiv.dataset.messageId = message.id;
+        messageDiv.dataset.timestamp = message.timestamp;
+
+        let html = showDate ? `
+            <div class="date-separator">
+                <span>${this.formatDate(message.timestamp)}</span>
+            </div>
+        ` : '';
+
+        const isOwn = message.sender === 'me';
+        html += `
+            <div class="flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2">
+                <div class="message-bubble ${isOwn ? 'own' : 'other'} p-3">
+                    ${this.renderMessageContent(message)}
+                    <div class="message-time">
+                        ${this.formatTime(message.timestamp)}
+                        ${isOwn ? `<span class="message-status">${this.getMessageStatusIcon(message.status)}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        messageDiv.innerHTML = html;
+        return messageDiv;
+    }
+
+    renderMessageContent(message) {
+        switch (message.type) {
+            case 'text':
+                return `<div class="break-words">${message.content}</div>`;
+            case 'voice':
+            case 'audio':
+                return `
+                    <div class="${message.type}-message">
+                        <button class="play-btn w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white" data-message-id="${message.id}" data-playing="false">
+                            <i class="fas fa-play text-xs"></i>
+                        </button>
+                        <div class="voice-waveform">${this.generateWaveform()}</div>
+                        <span class="text-xs text-gray-600">${this.formatDuration(message.audioDuration || 10)}</span>
+                    </div>
+                `;
+            default:
+                return `<div class="break-words">Type non supporté</div>`;
+        }
+    }
+
+    generateWaveform() {
+        let waveform = '';
+        for (let i = 0; i < 15; i++) {
+            const height = Math.random() * 15 + 5;
+            waveform += `<div class="wave-bar" style="height: ${height}px;"></div>`;
+        }
+        return waveform;
+    }
+
+    formatDuration(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = seconds % 60;
+        return `${min}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    async playAudioMessage(messageId) {
+        try {
+            const messages = await ApiManager.getMessages(this.currentChatId);
+            const message = messages.find(m => m.id === messageId);
+            if (!message || !message.audioData) throw new Error('Audio non trouvé');
+
+            const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+            const playBtn = messageElement.querySelector('.play-btn');
+            const isPlaying = playBtn.dataset.playing === 'true';
+
+            if (isPlaying) {
+                const audio = document.getElementById(`audio-${messageId}`);
+                if (audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    playBtn.dataset.playing = 'false';
+                    playBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
+                }
+                return;
+            }
+
+            let audio = document.getElementById(`audio-${messageId}`);
+            if (!audio) {
+                audio = document.createElement('audio');
+                audio.id = `audio-${messageId}`;
+                audio.src = message.audioData;
+                audio.style.display = 'none';
+                messageElement.appendChild(audio);
+            }
+
+            audio.play();
+            playBtn.dataset.playing = 'true';
+            playBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+
+            audio.onended = () => {
+                playBtn.dataset.playing = 'false';
+                playBtn.innerHTML = '<i class="fas fa-play text-xs"></i>';
+            };
+        } catch (error) {
+            console.error('Erreur de lecture:', error);
+            chatSystem.showToast('Impossible de lire le message audio', 'error');
+        }
+    }
+}
+
+// Système principal de chat
+class ChatSystem {
+    constructor() {
+        this.currentChatId = null;
+        this.currentContact = null;
+        this.messageManager = new MessageManager();
+        this.emojiManager = new EmojiManager();
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.pollingInterval = null;
+        this.confirmCallback = null;
+        this.recordingStartTime = null;
+        this.currentView = 'chats';
+        this.init();
+    }
+
+    async init() {
+        await this.loadContacts();
+        this.renderChatsView();
+        this.setupEventListeners();
+        this.showDefaultView();
+    }
+
+    async loadContacts() {
+        try {
+            const contacts = await ApiManager.getContacts();
+            this.contacts = contacts;
+        } catch (error) {
+            console.error('Erreur chargement contacts:', error);
+            this.showToast('Erreur lors du chargement des contacts', 'error');
+        }
+    }
+
+    renderChatsView() {
+        this.currentView = 'chats';
+        const sidebarChats = document.getElementById('sidebarChats');
+        if (!sidebarChats || !this.contacts) return;
+
+        sidebarChats.innerHTML = `
+            <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
+                <div class="relative">
+                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">A</span>
+                    </div>
+                    <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-white font-semibold text-lg">Utilisateur</span>
+                        <div class="flex space-x-2">
+                            <button id="newChatBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Nouvelle discussion">
+                                <i class="fas fa-comment-medical text-xl"></i>
+                            </button>
+                            <button id="menuBtn" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700" title="Menu">
+                                <i class="fas fa-ellipsis-v text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-2 bg-gray-900">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                    <input id="contactSearch" type="text" placeholder="Rechercher ou démarrer une discussion" class="w-full pl-10 pr-4 py-2 bg-gray-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            <div id="contactsList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
+            <div id="contextMenu" class="absolute hidden bg-gray-800 rounded-lg shadow-lg py-2 w-48 z-50">
+                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Nouvelle discussion</button>
+                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Nouveau groupe</button>
+                <button class="w-full text-left px-4 py-2 text-white hover:bg-gray-700" id="menuSettingsBtn">Paramètres</button>
+                <button id="logoutBtn" class="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-700">Déconnexion</button>
+            </div>
+        `;
+
+        this.renderContactsList(this.contacts);
+        this.setupViewEventListeners();
+    }
+
+    renderSettingsView() {
+        this.currentView = 'settings';
+        const sidebarChats = document.getElementById('sidebarChats');
+        if (!sidebarChats) return;
+
+        sidebarChats.innerHTML = `
+            <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
+                <button id="backToChats" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <h2 class="text-white font-semibold text-lg">Paramètres</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto scrollbar-thin p-4">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="bg-green-500 w-16 h-16 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-2xl">A</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold">Utilisateur</p>
+                        <p class="text-gray-400 text-sm">+33 6 12 34 56 78</p>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                        <i class="fas fa-user text-gray-400"></i>
+                        <span>Profil</span>
+                    </button>
+                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                        <i class="fas fa-bell text-gray-400"></i>
+                        <span>Notifications</span>
+                    </button>
+                    <button class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                        <i class="fas fa-lock text-gray-400"></i>
+                        <span>Confidentialité</span>
+                    </button>
+                    <button id="settingsLogout" class="w-full text-left p-3 text-red-400 hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                        <i class="fas fa-sign-out-alt text-red-400"></i>
+                        <span>Déconnexion</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.setupViewEventListeners();
+    }
+
+    renderNewChatView() {
+        this.currentView = 'newChat';
+        const sidebarChats = document.getElementById('sidebarChats');
+        if (!sidebarChats || !this.contacts) return;
+
+        sidebarChats.innerHTML = `
+            <div class="p-4 bg-gray-900 flex items-center space-x-4 border-b border-gray-700">
+                <button id="closePreview" class="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <h2 class="text-white font-semibold text-lg">Nouvelle discussion</h2>
+            </div>
+            <div class="p-2 bg-gray-900">
+                <button id="newContactBtn" class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-plus text-white"></i>
+                    </div>
+                    <span>Nouveau contact</span>
+                </button>
+            </div>
+            <div id="newChatContactsList" class="flex-1 overflow-y-auto scrollbar-thin"></div>
+        `;
+
+        this.renderNewChatContactsList(this.contacts);
+        this.setupViewEventListeners();
+    }
+
+    renderContactsList(contacts) {
+        const contactsList = document.getElementById('contactsList');
+        if (!contactsList) return;
+
+        contactsList.innerHTML = contacts.map(contact => `
+            <div class="p-3 flex items-center space-x-3 hover:bg-gray-800 cursor-pointer" 
+                 data-contact-id="${contact.id}" 
+                 onclick="chatSystem.selectContact('${contact.id}')">
+                <div class="relative">
+                    <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
+                    </div>
+                    ${contact.status === 'online' ? '<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>' : ''}
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between">
+                        <span class="text-white font-semibold">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</span>
+                        <span class="text-gray-500 text-xs">${this.messageManager.formatTime(new Date())}</span>
+                    </div>
+                    <div class="text-gray-400 text-sm truncate">${contact.phone}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderNewChatContactsList(contacts) {
+        const newChatContactsList = document.getElementById('newChatContactsList');
+        if (!newChatContactsList) return;
+
+        newChatContactsList.innerHTML = contacts.map(contact => `
+            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" 
+                 data-contact-id="${contact.id}" 
+                 onclick="chatSystem.selectContact('${contact.id}')">
+                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                    <span class="text-white font-bold">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
+                </div>
+                <div>
+                    <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
+                    <p class="text-gray-400 text-sm">${contact.phone}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    setupViewEventListeners() {
+        const newChatBtn = document.getElementById('newChatBtn');
+        const menuBtn = document.getElementById('menuBtn');
+        const closePreview = document.getElementById('closePreview');
+        const contactSearch = document.getElementById('contactSearch');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const settingsLogout = document.getElementById('settingsLogout');
+        const newContactBtn = document.getElementById('newContactBtn');
+        const backToChats = document.getElementById('backToChats');
+        const menuSettingsBtn = document.getElementById('menuSettingsBtn');
+
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', () => this.renderNewChatView());
+        }
+
+        if (menuBtn) {
+            menuBtn.addEventListener('click', (e) => this.toggleContextMenu(e));
+        }
+
+        if (closePreview) {
+            closePreview.addEventListener('click', () => this.renderChatsView());
+        }
+
+        if (contactSearch) {
+            contactSearch.addEventListener('input', (e) => this.filterContacts(e.target.value));
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
+        }
+
+        if (settingsLogout) {
+            settingsLogout.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
+        }
+
+        if (newContactBtn) {
+            newContactBtn.addEventListener('click', () => this.showNewContactModal());
+        }
+
+        if (backToChats) {
+            backToChats.addEventListener('click', () => this.renderChatsView());
+        }
+
+        if (menuSettingsBtn) {
+            menuSettingsBtn.addEventListener('click', () => this.renderSettingsView());
+        }
+    }
+
+    async selectContact(contactId) {
+        this.stopPolling();
+        try {
+            const contacts = await ApiManager.getContacts();
+            this.currentContact = contacts.find(c => c.id === contactId);
+            this.currentChatId = contactId;
+            this.messageManager.currentChatId = contactId;
+            
+            if (this.currentContact) {
+                this.renderChatInterface();
+                await this.loadMessages();
+                this.startPolling();
+                this.renderChatsView();
+            }
+        } catch (error) {
+            console.error('Erreur sélection contact:', error);
+            this.showToast('Erreur lors de la sélection du contact', 'error');
+        }
+    }
+
+    renderChatInterface() {
+        const chatHeader = document.getElementById('chatHeader');
+        if (!chatHeader || !this.currentContact) return;
+
+        chatHeader.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold">${(this.currentContact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
+                </div>
+                <div>
+                    <h2 class="text-white font-semibold">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</h2>
+                    <p class="text-gray-400 text-sm">${this.currentContact.status === 'online' ? 'en ligne' : 'hors ligne'}</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700" title="Appel vocal"><i class="fas fa-phone text-xl"></i></button>
+                <button class="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700" title="Rechercher"><i class="fas fa-search text-xl"></i></button>
+            </div>
+        `;
+
+        this.setupChatEventListeners();
+    }
+
+    async loadMessages() {
+        try {
+            const messages = await ApiManager.getMessages(this.currentChatId);
+            this.renderMessages(messages);
+        } catch (error) {
+            console.error('Erreur chargement messages:', error);
+            this.showToast('Erreur lors du chargement des messages', 'error');
+        }
+    }
+
+    renderMessages(messages) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        messagesContainer.innerHTML = '';
+        let lastDate = null;
+
+        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(message => {
+            const messageDate = new Date(message.timestamp).toDateString();
+            const showDate = lastDate !== messageDate;
+            lastDate = messageDate;
+
+            const messageElement = this.messageManager.createMessageElement(message, showDate);
+            messagesContainer.appendChild(messageElement);
+        });
+
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    addMessageToInterface(message) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        const lastMessage = messagesContainer.lastChild;
+        const lastDate = lastMessage?.dataset?.timestamp ? new Date(lastMessage.dataset.timestamp).toDateString() : null;
+        const messageDate = new Date(message.timestamp).toDateString();
+        const showDate = lastDate !== messageDate;
+
+        const messageElement = this.messageManager.createMessageElement(message, showDate);
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    updateMessageStatus(messageId, status) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            const statusElement = messageElement.querySelector('.message-status');
+            if (statusElement) {
+                statusElement.innerHTML = this.messageManager.getMessageStatusIcon(status);
+            }
+        }
+    }
+
+    setupEventListeners() {
+        const sidebarChatIcon = document.getElementById('sidebarChatIcon');
+        const settingsIcon = document.getElementById('settingsIcon');
+        const modalClose = document.getElementById('modal-close');
+        const confirmOk = document.getElementById('confirm-ok');
+        const confirmCancel = document.getElementById('confirm-cancel');
+        const newContactSave = document.getElementById('newContactSave');
+        const newContactCancel = document.getElementById('newContactCancel');
+
+        if (sidebarChatIcon) {
+            sidebarChatIcon.addEventListener('click', () => this.renderChatsView());
+        }
+
+        if (settingsIcon) {
+            settingsIcon.addEventListener('click', () => this.renderSettingsView());
+        }
+
+        if (modalClose) {
+            modalClose.addEventListener('click', () => this.hideModal('modal'));
+        }
+
+        if (confirmOk) {
+            confirmOk.addEventListener('click', () => this.handleConfirm());
+        }
+
+        if (confirmCancel) {
+            confirmCancel.addEventListener('click', () => this.hideModal('confirm-modal'));
+        }
+
+        if (newContactSave) {
+            newContactSave.addEventListener('click', () => this.saveNewContact());
+        }
+
+        if (newContactCancel) {
+            newContactCancel.addEventListener('click', () => this.hideModal('new-contact-modal'));
+        }
+
         document.addEventListener('click', (e) => {
             const contextMenu = document.getElementById('contextMenu');
-            if (!contextMenu.contains(e.target) && !document.getElementById('menuBtn').contains(e.target)) {
+            const menuBtn = document.getElementById('menuBtn');
+            if (contextMenu && !contextMenu.contains(e.target) && e.target !== menuBtn) {
                 contextMenu.classList.add('hidden');
             }
         });
     }
 
-    navigateTo(view, options = {}) {
-        Object.values(this.views).forEach(v => v.classList.add('hidden'));
-        this.views[view].classList.remove('hidden');
-        this.views[view].classList.add('animate-slide-up');
+    setupChatEventListeners() {
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const charCount = document.getElementById('charCount');
+        const attachBtn = document.getElementById('attachBtn');
+        const audioInput = document.getElementById('audioInput');
+        const cancelRecording = document.getElementById('cancelRecording');
 
-        if (view !== this.navigationStack[this.navigationStack.length - 1]) {
-            this.navigationStack.push(view);
-        }
-
-        if (view === 'sidebarChats') {
-            this.chatSystem.loadContacts();
-            this.hidePreview();
-        } else if (view === 'sidebarSettings') {
-            this.hidePreview();
-        } else if (view === 'chatArea' && options.contactId) {
-            this.chatSystem.selectContact(options.contactId);
-        }
-    }
-
-    showPreview(previewType, data = {}) {
-        this.currentPreviewView = previewType;
-        this.views.previewPanel.classList.remove('hidden');
-        this.views.previewPanel.classList.add('animate-slide-up');
-        this.views.sidebarChats.classList.add('hidden');
-
-        if (!this.navigationStack.includes('previewPanel')) {
-            this.navigationStack.push('previewPanel');
-        }
-
-        switch (previewType) {
-            case 'newChat':
-                this.renderNewChatPreview();
-                break;
-            case 'newContact':
-                this.renderNewContactPreview();
-                break;
-            case 'settings':
-                this.renderSettingsPreview();
-                break;
-        }
-    }
-
-    hidePreview() {
-        this.views.previewPanel.classList.add('animate-slide-down');
-        setTimeout(() => {
-            this.views.previewPanel.classList.add('hidden');
-            this.views.previewPanel.innerHTML = '';
-            this.views.previewPanel.classList.remove('animate-slide-down');
-            this.currentPreviewView = null;
-            if (this.navigationStack[this.navigationStack.length - 1] === 'sidebarChats') {
-                this.views.sidebarChats.classList.remove('hidden');
-                this.views.sidebarChats.classList.add('animate-slide-up');
-            }
-        }, 300);
-    }
-
-    goBack() {
-        if (this.navigationStack.length <= 1) return;
-
-        const currentView = this.navigationStack.pop();
-        const previousView = this.navigationStack[this.navigationStack.length - 1];
-
-        if (currentView === 'previewPanel') {
-            if (this.currentPreviewView === 'newContact') {
-                this.showPreview('newChat');
-            } else {
-                this.hidePreview();
-            }
-        } else {
-            this.views[currentView].classList.add('animate-slide-down');
-            setTimeout(() => {
-                this.views[currentView].classList.add('hidden');
-                this.views[currentView].classList.remove('animate-slide-down');
-                this.navigateTo(previousView);
-            }, 300);
-        }
-    }
-
-    toggleContextMenu() {
-        const contextMenu = document.getElementById('contextMenu');
-        contextMenu.classList.toggle('hidden');
-    }
-
-    renderNewChatPreview() {
-        this.modalSystem.showLoadingModal('Chargement des contacts...');
-        getContacts().then(contacts => {
-            this.modalSystem.hideLoadingModal();
-            this.views.previewPanel.innerHTML = `
-                <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <button id="backBtn" class="text-gray-400 hover:text-white text-2xl" aria-label="Retour">←</button>
-                        <h2 class="text-white text-lg font-semibold">Nouvelle discussion</h2>
-                        <button id="closePreviewBtn" class="text-gray-400 hover:text-white" aria-label="Fermer">×</button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto">
-                        <button id="newContactBtn" class="flex items-center w-full p-2 text-white hover:bg-gray-700 rounded-lg">
-                            <i class="fas fa-user-plus text-xl text-green-500 mr-3"></i>
-                            <span>Nouveau contact</span>
-                        </button>
-                        ${contacts.map(c => `
-                            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer contact-item" data-contact-id="${c.id}">
-                                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                                    <span class="text-white">${c.fullName.charAt(0)}</span>
-                                </div>
-                                <div>
-                                    <p class="text-white">${c.fullName}</p>
-                                    <p class="text-gray-400 text-sm">${c.phone}</p>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            document.getElementById('backBtn')?.addEventListener('click', () => this.goBack());
-            document.getElementById('closePreviewBtn')?.addEventListener('click', () => this.hidePreview());
-            document.getElementById('newContactBtn')?.addEventListener('click', () => this.showPreview('newContact'));
-            document.querySelectorAll('.contact-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    this.hidePreview();
-                    this.navigateTo('chatArea', { contactId: item.dataset.contactId });
-                });
+        if (messageInput) {
+            messageInput.addEventListener('input', (e) => {
+                charCount.textContent = e.target.value.length;
+                sendBtn.classList.toggle('hidden', e.target.value.length === 0);
+                recordBtn.classList.toggle('hidden', e.target.value.length > 0);
             });
-        }).catch(() => {
-            this.modalSystem.hideLoadingModal();
-            this.modalSystem.showModal('Erreur de chargement des contacts.', 'error');
-        });
-    }
 
-    renderNewContactPreview() {
-        this.views.previewPanel.innerHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
-                <div class="flex items-center mb-4">
-                    <button id="backBtn" class="text-gray-400 hover:text-white text-2xl mr-4" aria-label="Retour">←</button>
-                    <h2 class="text-white text-lg font-semibold">Nouveau contact</h2>
-                </div>
-                <div class="flex-1 space-y-4 overflow-y-auto">
-                    <input type="text" id="contactFirstName" placeholder="Prénom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none placeholder-gray-400">
-                    <input type="text" id="contactLastName" placeholder="Nom" class="w-full p-2 bg-gray-800 text-white rounded-lg focus:outline-none">
-                    <div class="flex items-center">
-                        <select id="contactCountryCode" class="w-24 p-2 bg-gray-800 rounded-l-lg focus:outline-none">
-                            <option value="+221">SN +221</option>
-                            <option value="+33">FR +33</option>
-                            <option value="+1">US +1</option>
-                            <option value="+44">UK +44</option>
-                        </select>
-                        <input type="tel" id="contactPhone" placeholder="Téléphone" class="flex-1 p-2 bg-gray-800 text-white rounded-r-lg focus:outline-none">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <input type="checkbox" id="syncContact" class="w-5 h-5 text-green-500 bg-gray-800 rounded">
-                        <label for="syncContact" class="text-gray-300 text-sm">Synchroniser le contact sur le téléphone</label>
-                    </div>
-                    <button id="saveContactBtn" class="w-full bg-green-600 text-white p-2 rounded-lg">Enregistrer</button>
-                    <p class="text-gray-500 text-xs text-center">Ce contact sera ajouté au carnet d'adresses.</p>
-                </div>
-            </div>
-        `;
-        document.getElementById('backBtn')?.addEventListener('click', () => this.showPreview('newChat'));
-        document.getElementById('saveContactBtn')?.addEventListener('click', async () => {
-            const firstName = document.getElementById('contactFirstName').value.trim();
-            const lastName = document.getElementById('contactLastName').value.trim();
-            const phone = document.getElementById('contactCountryCode').value + document.getElementById('contactPhone').value.trim().replace(/\s/g, '');
-            const sync = document.getElementById('syncContact').checked;
-            if (!firstName || !lastName || !phone) {
-                this.modalSystem.showModal('Veuillez remplir tous les champs.', 'warning');
-                return;
-            }
-            const phoneRegex = /^[\+]?[0-9]+$/;
-            if (!phoneRegex.test(phone)) {
-                this.modalSystem.showModal('Numéro de téléphone invalide.', 'warning');
-                return;
-            }
-            const contactData = {
-                id: Date.now().toString(),
-                firstName,
-                lastName,
-                fullName: `${firstName} ${lastName}`,
-                phone,
-                country: phone.slice(1, 4),
-                avatar: { color: 'bg-green-500', initial: firstName.charAt(0).toUpperCase() },
-                createdAt: new Date().toISOString()
-            };
-            this.modalSystem.showLoadingModal('Ajout de contact...');
-            try {
-                await saveContact(contactData);
-                this.modalSystem.hideLoadingModal();
-                this.modalSystem.showModal('Contact ajouté avec succès !', 'success');
-                this.showPreview('newChat');
-                await this.chatSystem.updateContactsList();
-            } catch (error) {
-                this.modalSystem.hideLoadingModal();
-                this.modalSystem.showModal('Erreur lors de l\'ajout du contact.', 'error');
-            }
-        });
-    }
-
-    renderSettingsPreview() {
-        this.views.previewPanel.innerHTML = `
-            <div class="h-full w-[600px] bg-gray-900 flex flex-col p-4">
-                <div class="flex items-center mb-4">
-                    <button id="backBtn" class="text-gray-400 hover:text-white text-2xl mr-4" aria-label="Retour">←</button>
-                    <h2 class="text-white text-lg font-semibold">Paramètres</h2>
-                </div>
-                <div class="flex flex-col items-center py-6 border-b border-gray-800">
-                    <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="avatar" class="w-24 h-24 rounded-full border-2 border-gray-700">
-                    <p class="text-white font-bold mt-4">Bachir_deV</p>
-                    <p class="text-gray-400 text-xs mt-2">Salut ! J'utilise WhatsApp.</p>
-                </div>
-                <div class="flex-1 overflow-y-auto">
-                    <ul class="divide-y divide-gray-800">
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Compte</a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Confidentialité</a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Discussions</a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Notifications</a></li>
-                        <li><a href="#" class="flex items-center px-8 py-5 hover:bg-gray-800">Aide</a></li>
-                        <li><a href="#" id="settingsLogoutBtn" class="flex items-center px-8 py-5 hover:bg-red-800 text-red-500">Déconnexion</a></li>
-                    </ul>
-                </div>
-            </div>
-        `;
-        document.getElementById('backBtn')?.addEventListener('click', () => this.goBack());
-        document.getElementById('settingsLogoutBtn')?.addEventListener('click', () => this.chatSystem.logout());
-    }
-}
-
-class ChatSystem {
-    constructor(modalSystem) {
-        this.modalSystem = modalSystem;
-        this.currentChatId = null;
-        this.currentContact = null;
-        this.messagesContainer = document.getElementById('messagesContainer');
-        this.messageInput = document.getElementById('messageInput');
-        this.sendBtn = document.getElementById('sendBtn');
-        this.recordBtn = document.getElementById('recordBtn');
-        this.callBtn = document.getElementById('callBtn');
-        this.searchBtn = document.getElementById('searchBtn');
-        this.optionsBtn = document.getElementById('optionsBtn');
-        this.optionsMenu = document.getElementById('chatOptionsMenu');
-        this.searchBarEl = document.getElementById('searchBar');
-        this.searchInput = document.getElementById('searchInput');
-        this.mediaRecorder = null;
-        this.audioChunks = [];
-        this.isRecording = false;
-        this.setupEventListeners();
-        this.loadContacts();
-        this.pollMessages();
-    }
-
-    setupEventListeners() {
-        this.sendBtn?.addEventListener('click', () => this.handleSendMessage());
-        this.messageInput?.addEventListener('keypress', (e) => e.key === 'Enter' && this.handleSendMessage());
-        this.recordBtn?.addEventListener('click', () => this.toggleRecording());
-        this.callBtn?.addEventListener('click', () => this.modalSystem.showModal('Appel non implémenté.', 'info'));
-        this.searchBtn?.addEventListener('click', () => this.toggleSearch());
-        this.optionsBtn?.addEventListener('click', () => this.toggleOptionsMenu());
-        this.searchInput?.addEventListener('input', () => this.handleSearch());
-        document.addEventListener('click', (e) => {
-            if (!this.optionsMenu.contains(e.target) && !this.optionsBtn.contains(e.target)) {
-                this.optionsMenu.classList.add('hidden');
-            }
-        });
-        document.getElementById('contactSearch')?.addEventListener('input', (e) => this.filterContacts(e.target.value));
-    }
-
-    toggleSearch() {
-        this.searchBarEl.classList.toggle('hidden');
-        if (!this.searchBarEl.classList.contains('hidden')) {
-            this.searchInput.focus();
-        } else {
-            this.searchInput.value = '';
-            this.loadMessages();
-        }
-    }
-
-    handleSearch() {
-        const query = this.searchInput.value.toLowerCase();
-        const messages = document.querySelectorAll('#messagesContainer > div');
-        messages.forEach(msg => {
-            const content = msg.querySelector('p')?.textContent.toLowerCase() || '';
-            msg.style.display = content.includes(query) ? '' : 'none';
-        });
-    }
-
-    toggleOptionsMenu() {
-        this.optionsMenu.classList.toggle('hidden');
-    }
-
-    filterContacts(query) {
-        const contacts = document.querySelectorAll('#contactsList .contact-item');
-        contacts.forEach(contact => {
-            const name = contact.querySelector('p.text-white')?.textContent.toLowerCase() || '';
-            const phone = contact.querySelector('p.text-gray-500')?.textContent.toLowerCase() || '';
-            contact.style.display = name.includes(query.toLowerCase()) || phone.includes(query.toLowerCase()) ? '' : 'none';
-        });
-    }
-
-    async updateContactsList() {
-        await this.loadContacts();
-    }
-
-    async loadContacts() {
-        try {
-            this.modalSystem.showLoadingModal('Chargement des contacts...');
-            const contacts = await getContacts();
-            const contactsList = document.getElementById('contactsList');
-            contactsList.innerHTML = contacts.map(contact => `
-                <div class="contact-item p-3 hover:bg-gray-800 cursor-pointer flex items-center" data-contact-id="${contact.id}">
-                    <div class="bg-blue-500 w-10 h-10 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-white">${contact.fullName.charAt(0)}</span>
-                    </div>
-                    <div>
-                        <p class="text-white">${contact.fullName}</p>
-                        <p class="text-gray-500 text-sm">${contact.phone}</p>
-                    </div>
-                </div>
-            `).join('');
-            contactsList.querySelectorAll('.contact-item').forEach(item => {
-                item.addEventListener('click', () => this.selectContact(item.dataset.contactId));
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
             });
-            this.modalSystem.hideLoadingModal();
-        } catch (error) {
-            this.modalSystem.hideLoadingModal();
-            this.modalSystem.showModal('Erreur de chargement des contacts.', 'error');
+        }
+
+        if (sendBtn) sendBtn.addEventListener('click', () => this.sendMessage());
+        if (emojiBtn) emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
+        if (recordBtn) {
+            recordBtn.addEventListener('mousedown', () => this.startRecording());
+            recordBtn.addEventListener('mouseup', () => this.stopRecording());
+            recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.startRecording(); });
+            recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.stopRecording(); });
+        }
+
+        if (attachBtn) {
+            attachBtn.addEventListener('click', () => audioInput.click());
+        }
+
+        if (audioInput) {
+            audioInput.addEventListener('change', (e) => this.handleAudioUpload(e.target.files[0]));
+        }
+
+        if (cancelRecording) {
+            cancelRecording.addEventListener('click', () => this.cancelRecording());
+        }
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+            messagesContainer.addEventListener('click', (e) => {
+                const playBtn = e.target.closest('.play-btn');
+                if (playBtn) {
+                    this.messageManager.playAudioMessage(playBtn.dataset.messageId);
+                }
+            });
         }
     }
 
-    async selectContact(contactId) {
-        this.currentChatId = contactId;
-        const contacts = await getContacts();
-        this.currentContact = contacts.find(c => c.id === contactId);
-        document.getElementById('chatContactName').textContent = this.currentContact?.fullName || 'Contact';
-        await this.loadMessages();
-        this.scrollToBottom();
-        window.WhatsAppSystems.navigationSystem.navigateTo('chatArea', { contactId });
-    }
+    async sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        if (!messageInput || !messageInput.value.trim() || !this.currentChatId) return;
 
-    async loadMessages() {
-        try {
-            const messages = await getMessages(this.currentChatId);
-            this.messagesContainer.innerHTML = messages.map(msg => {
-                const isMe = msg.senderId === 'user_id';
-                const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return `
-                    <div class="mb-4 flex ${isMe ? 'justify-end' : 'justify-start'}">
-                        <div class="${isMe ? 'message-sent' : 'message-received'} p-3 shadow">
-                            <p>${msg.content}</p>
-                            <span class="timestamp">${time}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            this.scrollToBottom();
-        } catch (error) {
-            this.modalSystem.showModal('Erreur de chargement des messages.', 'error');
-        }
-    }
-
-    async handleSendMessage() {
-        const content = this.messageInput.value.trim();
-        if (!content || !this.currentChatId) return;
         const messageData = {
             id: Date.now().toString(),
             chatId: this.currentChatId,
-            senderId: 'user_id',
-            content,
-            timestamp: new Date().toISOString()
+            sender: 'me',
+            content: messageInput.value.trim(),
+            type: 'text',
+            timestamp: new Date().toISOString(),
+            status: 'sending'
         };
+
+        this.addMessageToInterface(messageData);
+        messageInput.value = '';
+        document.getElementById('charCount').textContent = '0';
+        document.getElementById('sendBtn').classList.add('hidden');
+        document.getElementById('recordBtn').classList.remove('hidden');
+
         try {
-            this.modalSystem.showLoadingModal('Envoi du message...');
-            await saveMessage(messageData);
-            this.messageInput.value = '';
-            await this.loadMessages();
-            this.modalSystem.hideLoadingModal();
+            await ApiManager.saveMessage(messageData);
+            this.updateMessageStatus(messageData.id, 'sent');
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
         } catch (error) {
-            this.modalSystem.hideLoadingModal();
-            this.modalSystem.showModal('Erreur lors de l\'envoi du message.', 'error');
+            console.error('Erreur envoi message:', error);
+            this.updateMessageStatus(messageData.id, 'failed');
+            this.showToast('Erreur lors de l\'envoi du message', 'error');
         }
     }
 
-    async toggleRecording() {
-        if (!this.isRecording) {
+    async startRecording() {
+        if (this.isRecording) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            this.audioChunks = [];
+            this.isRecording = true;
+            this.recordingStartTime = Date.now();
+
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            const recordingTime = document.getElementById('recordingTime');
+            if (recordingIndicator) recordingIndicator.classList.remove('hidden');
+
+            this.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) this.audioChunks.push(e.data);
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                const audioData = await this.blobToBase64(audioBlob);
+                const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+
+                const messageData = {
+                    id: Date.now().toString(),
+                    chatId: this.currentChatId,
+                    sender: 'me',
+                    type: 'voice',
+                    audioData: audioData,
+                    audioDuration: duration,
+                    timestamp: new Date().toISOString(),
+                    status: 'sending'
+                };
+
+                this.addMessageToInterface(messageData);
+
+                try {
+                    await ApiManager.saveMessage(messageData);
+                    this.updateMessageStatus(messageData.id, 'sent');
+                    setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+                    setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+                } catch (error) {
+                    console.error('Erreur envoi message vocal:', error);
+                    this.updateMessageStatus(messageData.id, 'failed');
+                    this.showToast('Erreur lors de l\'envoi du message vocal', 'error');
+                }
+
+                stream.getTracks().forEach(track => track.stop());
+                this.isRecording = false;
+                if (recordingIndicator) recordingIndicator.classList.add('hidden');
+                if (recordingTime) {
+                    recordingTime.textContent = '0:00';
+                    recordingTime.dataset.seconds = '0';
+                }
+            };
+
+            this.mediaRecorder.start();
+
+            // Update recording time display
+            this.recordingTimer = setInterval(() => {
+                if (recordingTime) {
+                    const seconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    recordingTime.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+                    recordingTime.dataset.seconds = seconds;
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Erreur démarrage enregistrement:', error);
+            this.showToast('Erreur lors de l\'accès au microphone', 'error');
+        }
+    }
+
+    stopRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+
+        this.mediaRecorder.stop();
+        clearInterval(this.recordingTimer);
+        this.isRecording = false;
+    }
+
+    cancelRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+
+        this.mediaRecorder.stop();
+        clearInterval(this.recordingTimer);
+        this.isRecording = false;
+        this.audioChunks = [];
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const recordingTime = document.getElementById('recordingTime');
+        if (recordingIndicator) recordingIndicator.classList.add('hidden');
+        if (recordingTime) {
+            recordingTime.textContent = '0:00';
+            recordingTime.dataset.seconds = '0';
+        }
+        this.showToast('Enregistrement annulé', 'info');
+    }
+
+    async handleAudioUpload(file) {
+        if (!file || !this.currentChatId) return;
+
+        try {
+            const audioData = await this.blobToBase64(file);
+            const audio = new Audio(URL.createObjectURL(file));
+            await new Promise((resolve) => {
+                audio.onloadedmetadata = () => resolve();
+            });
+            const duration = Math.floor(audio.duration);
+
+            const messageData = {
+                id: Date.now().toString(),
+                chatId: this.currentChatId,
+                sender: 'me',
+                type: 'audio',
+                audioData: audioData,
+                audioDuration: duration,
+                timestamp: new Date().toISOString(),
+                status: 'sending'
+            };
+
+            this.addMessageToInterface(messageData);
+
+            await ApiManager.saveMessage(messageData);
+            this.updateMessageStatus(messageData.id, 'sent');
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+            setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+        } catch (error) {
+            console.error('Erreur upload audio:', error);
+            this.showToast('Erreur lors de l\'envoi du fichier audio', 'error');
+        }
+    }
+
+    blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    startPolling() {
+        this.stopPolling();
+        this.pollingInterval = setInterval(async () => {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                this.mediaRecorder = new MediaRecorder(stream);
-                this.audioChunks = [];
-                this.mediaRecorder.ondataavailable = (e) => this.audioChunks.push(e.data);
-                this.mediaRecorder.onstop = () => this.handleStopRecording();
-                this.mediaRecorder.start();
-                this.isRecording = true;
-                this.recordBtn.classList.remove('bg-red-600');
-                this.recordBtn.classList.add('bg-green-600', 'animate-pulse-slow');
-                this.recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
-                this.modalSystem.showModal('Enregistrement en cours...', 'info');
+                const messages = await ApiManager.getMessages(this.currentChatId);
+                this.renderMessages(messages);
             } catch (error) {
-                this.modalSystem.showModal('Erreur d\'accès au microphone.', 'error');
-            }
-        } else {
-            this.mediaRecorder.stop();
-            this.isRecording = false;
-            this.recordBtn.classList.remove('bg-green-600', 'animate-pulse-slow');
-            this.recordBtn.classList.add('bg-red-600');
-            this.recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-            this.modalSystem.hideModal();
-        }
-    }
-
-    async handleStopRecording() {
-        if (this.audioChunks.length === 0) {
-            this.modalSystem.showModal('Aucun audio enregistré.', 'warning');
-            return;
-        }
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        const metadata = { duration: this.audioChunks.length * 0.02 };
-        try {
-            this.modalSystem.showLoadingModal('Envoi du message vocal...');
-            await saveVoiceMessage(this.currentChatId, metadata);
-            this.messagesContainer.innerHTML += `
-                <div class="mb-4 flex justify-end">
-                    <div class="voice-message p-3 shadow">
-                        <audio controls src="${URL.createObjectURL(audioBlob)}"></audio>
-                        <span class="timestamp">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                </div>
-            `;
-            this.scrollToBottom();
-            this.modalSystem.hideLoadingModal();
-        } catch (error) {
-            this.modalSystem.hideLoadingModal();
-            this.modalSystem.showModal('Erreur lors de l\'envoi du message vocal.', 'error');
-        }
-    }
-
-    scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-    }
-
-    pollMessages() {
-        setInterval(async () => {
-            if (this.currentChatId) {
-                await this.loadMessages();
+                console.error('Erreur polling:', error);
             }
         }, 5000);
     }
 
-    logout() {
-        this.modalSystem.showConfirmModal(
-            'Déconnexion',
-            'Voulez-vous vraiment vous déconnecter ?',
-            () => {
-                this.modalSystem.showModal('Déconnexion réussie.', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-            },
-            'question'
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    showDefaultView() {
+        const chatHeader = document.getElementById('chatHeader');
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (chatHeader) chatHeader.innerHTML = '';
+        if (messagesContainer) messagesContainer.innerHTML = `
+            <div class="flex-1 flex items-center justify-center text-gray-400">
+                <p>Sélectionnez une discussion pour commencer</p>
+            </div>
+        `;
+    }
+
+    toggleContextMenu(event) {
+        const contextMenu = document.getElementById('contextMenu');
+        if (!contextMenu) return;
+
+        contextMenu.classList.toggle('hidden');
+        contextMenu.style.top = `${event.clientY}px`;
+        contextMenu.style.left = `${event.clientX}px`;
+
+        const rect = contextMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            contextMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            contextMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
+        }
+    }
+
+    showModal(message, type = 'info') {
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalIcon = document.getElementById('modal-icon');
+
+        if (modal && modalMessage && modalIcon) {
+            modalMessage.textContent = message;
+            modalIcon.innerHTML = type === 'error' ? '<i class="fas fa-exclamation-circle text-red-500"></i>' : '<i class="fas fa-info-circle text-green-500"></i>';
+            modal.classList.remove('hidden');
+        }
+    }
+
+    hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('hidden');
+        this.confirmCallback = null;
+    }
+
+    showConfirmModal(title, message, callback) {
+        const modal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+
+        if (modal && confirmTitle && confirmMessage) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            modal.classList.remove('hidden');
+            this.confirmCallback = callback;
+        }
+    }
+
+    handleConfirm() {
+        if (this.confirmCallback) {
+            this.confirmCallback();
+        }
+        this.hideModal('confirm-modal');
+    }
+
+    showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `flex items-center p-3 rounded-lg shadow-lg animate-slide-up max-w-xs ${
+            type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-gray-700'
+        } text-white`;
+
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} mr-2"></i>
+            <span>${message}</span>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('animate-slide-down');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    async logout() {
+        try {
+            await ApiManager.deleteSession();
+            window.location.reload();
+        } catch (error) {
+            console.error('Erreur déconnexion:', error);
+            this.showToast('Erreur lors de la déconnexion', 'error');
+        }
+    }
+
+    showNewContactModal() {
+        const modal = document.getElementById('new-contact-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    async saveNewContact() {
+        const nameInput = document.getElementById('newContactName');
+        const phoneInput = document.getElementById('newContactPhone');
+
+        if (!nameInput || !phoneInput || !nameInput.value.trim() || !phoneInput.value.trim()) {
+            this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        const contactData = {
+            id: Date.now().toString(),
+            fullName: nameInput.value.trim(),
+            phone: phoneInput.value.trim(),
+            status: 'offline'
+        };
+
+        try {
+            await ApiManager.addContact(contactData);
+            this.contacts.push(contactData);
+            if (this.currentView === 'chats') {
+                this.renderContactsList(this.contacts);
+            } else if (this.currentView === 'newChat') {
+                this.renderNewChatContactsList(this.contacts);
+            }
+            this.hideModal('new-contact-modal');
+            nameInput.value = '';
+            phoneInput.value = '';
+            this.showToast('Contact ajouté avec succès', 'success');
+        } catch (error) {
+            console.error('Erreur ajout contact:', error);
+            this.showToast('Erreur lors de l\'ajout du contact', 'error');
+        }
+    }
+
+    filterContacts(query) {
+        const filtered = this.contacts.filter(contact =>
+            (contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`).toLowerCase().includes(query.toLowerCase()) ||
+            contact.phone.includes(query)
         );
+
+        if (this.currentView === 'chats') {
+            this.renderContactsList(filtered);
+        } else if (this.currentView === 'newChat') {
+            this.renderNewChatContactsList(filtered);
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const modalSystem = new ModalSystem();
-    const chatSystem = new ChatSystem(modalSystem);
-    const navigationSystem = new NavigationSystem(modalSystem, chatSystem);
-    window.WhatsAppSystems = {
-        modalSystem,
-        chatSystem,
-        navigationSystem
-    };
-});
+// Initialisation
+const chatSystem = new ChatSystem();
