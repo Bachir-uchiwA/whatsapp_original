@@ -80,6 +80,43 @@ style.textContent = `
         border-radius: 8px;
         width: 100%;
         margin-bottom: 16px;
+        font-size: 14px;
+    }
+    .settings-profile {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #4a5568;
+    }
+    .settings-profile .avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #34d399;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        position: relative;
+    }
+    .settings-profile .avatar .status {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 10px;
+        height: 10px;
+        background: #34d399;
+        border: 2px solid #1a202c;
+        border-radius: 50%;
+    }
+    .settings-profile .info .name {
+        color: #fff;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    .settings-profile .info .status-text {
+        color: #a0aec0;
+        font-size: 12px;
     }
     .settings-item {
         display: flex;
@@ -90,15 +127,26 @@ style.textContent = `
     }
     .settings-item i {
         margin-right: 12px;
-        color: #48bb78;
+        color: #34d399;
+        font-size: 16px;
+    }
+    .settings-item span {
+        flex: 1;
+        font-size: 14px;
+    }
+    .settings-item .subtext {
+        color: #a0aec0;
+        font-size: 12px;
     }
     .logout-btn {
-        background: #e53e3e;
+        background: #f87171;
         color: #fff;
         padding: 12px;
         border-radius: 8px;
         text-align: center;
-        margin-top: 16px;
+        margin: 16px 12px 0;
+        font-size: 14px;
+        font-weight: 500;
     }
 `;
 document.head.appendChild(style);
@@ -506,52 +554,47 @@ class ChatSystem {
                 <h2 class="text-white font-semibold text-lg">Paramètres</h2>
             </div>
             <div class="p-4 bg-gray-900 flex flex-col h-full">
-                <input type="text" placeholder="Rechercher dans les paramètres" class="settings-search mb-4">
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="relative">
-                        <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
-                            <span class="text-white font-bold text-lg">B</span>
-                        </div>
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                <input type="text" placeholder="Rechercher dans les paramètres" class="settings-search mb-6">
+                <div class="settings-profile mb-6">
+                    <div class="avatar">
+                        <img src="https://via.placeholder.com/50" alt="Profile" class="w-full h-full rounded-full">
+                        <div class="status"></div>
                     </div>
-                    <div>
-                        <div class="flex items-center">
-                            <span class="text-white font-semibold">Bachir dev</span>
-                            <span class="text-green-500 text-sm ml-2">En ligne</span>
-                        </div>
-                        <p class="text-gray-400 text-sm">Salut ! Justifie WhatsApp.</p>
+                    <div class="info">
+                        <div class="name">Bachir dev <span class="text-green-500 text-sm">🇱🇾🇽🇧❤️</span></div>
+                        <div class="status-text">En ligne <span class="text-gray-400">• Salut ! Justifie WhatsApp.</span></div>
                     </div>
                 </div>
                 <div class="space-y-2 flex-1">
                     <div class="settings-item">
                         <i class="fas fa-user-shield"></i>
                         <span>Compte</span>
-                        <span class="text-gray-400 ml-auto">Sécurité, informations de compte</span>
+                        <span class="subtext">Sécurité, informations de compte</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-lock"></i>
                         <span>Confidentialité</span>
-                        <span class="text-gray-400 ml-auto">Contacts bloqués, messages éphémères</span>
+                        <span class="subtext">Contacts bloqués, messages éphémères</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-comments"></i>
                         <span>Discussions</span>
-                        <span class="text-gray-400 ml-auto">Thème, fond d'écran, paramètres des discussions</span>
+                        <span class="subtext">Thème, fond d'écran, paramètres des discussions</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-bell"></i>
                         <span>Notifications</span>
-                        <span class="text-gray-400 ml-auto">Notifications de messages</span>
+                        <span class="subtext">Notifications de messages</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-keyboard"></i>
                         <span>Raccourcis clavier</span>
-                        <span class="text-gray-400 ml-auto">Actions rapides</span>
+                        <span class="subtext">Actions rapides</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-question-circle"></i>
                         <span>Aide</span>
-                        <span class="text-gray-400 ml-auto">Pages d'aide, contactez-nous, politique de confidentialité</span>
+                        <span class="subtext">Pages d'aide, contactez-nous, politique de confidentialité</span>
                     </div>
                 </div>
                 <button id="settingsLogout" class="logout-btn">Se déconnecter</button>
