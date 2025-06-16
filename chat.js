@@ -1,12 +1,20 @@
-const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
+const API_BASE_URL = 'https://projet-json-server-4.onrender.com';
 
 async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: { 'Content-Type': 'application/json', ...options.headers },
-            ...options
+            headers: { 
+                'Content-Type': 'application/json', 
+                ...options.headers 
+            },
+            ...options,
+            credentials: 'omit' // Ajout pour éviter les problèmes de credentials si non nécessaires
         });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+        }
         return await response.json();
     } catch (error) {
         console.error('API Error:', error);
@@ -211,7 +219,7 @@ class ModalSystem {
                 if (chatSystem) await chatSystem.updateContactsList();
             } catch (error) {
                 this.hideLoadingModal();
-                this.showModal('Erreur lors de l\'ajout du contact. Veuillez réessayer.', 'error');
+                this.showModal('Erreur lors de l\'ajout du contact. Vérifiez votre connexion ou le serveur.', 'error');
             }
         });
     }
@@ -347,7 +355,7 @@ class ModalSystem {
             newContactBtn?.addEventListener('click', () => this.showNewContactFormInPreview());
         }).catch(error => {
             this.hideLoadingModal();
-            this.showModal('Erreur lors du chargement des contacts.', 'error');
+            this.showModal('Erreur lors du chargement des contacts. Vérifiez votre connexion ou le serveur.', 'error');
         });
     }
 
@@ -544,7 +552,7 @@ class ChatSystem {
                 }).join('');
             }
         } catch (error) {
-            this.modalSystem.error('Erreur lors du chargement des contacts.');
+            this.modalSystem.error('Erreur lors du chargement des contacts. Vérifiez votre connexion ou le serveur.');
         }
     }
 
@@ -710,7 +718,7 @@ class ChatSystem {
             }
             this.scrollToBottom();
         } catch (error) {
-            this.modalSystem.error('Erreur lors du chargement des messages.');
+            this.modalSystem.error('Erreur lors du chargement des messages. Vérifiez votre connexion ou le serveur.');
         } finally {
             this.hideLoadingModal();
         }
@@ -744,7 +752,7 @@ class ChatSystem {
                 }
             } catch (error) {
                 this.hideLoadingModal();
-                this.modalSystem.error('Erreur lors de l\'envoi. Vérifiez votre connexion.');
+                this.modalSystem.error('Erreur lors de l\'envoi. Vérifiez votre connexion ou le serveur.');
                 this.messagesContainer.removeChild(this.messagesContainer.lastChild);
             }
         }
