@@ -380,6 +380,7 @@ class ChatSystem {
         this.audioChunks = [];
         this.pollingInterval = null;
         this.confirmCallback = null;
+        this.recordingStartTime = null;
         this.init();
     }
 
@@ -464,6 +465,59 @@ class ChatSystem {
         `;
 
         this.setupChatEventListeners();
+    }
+
+    async loadMessages() {
+        try {
+            const messages = await ApiManager.getMessages(this.currentChatId);
+            this.renderMessages(messages);
+        } catch (error) {
+            console.error('Erreur chargement messages:', error);
+            this.showToast('Erreur lors du chargement des messages', 'error');
+        }
+    }
+
+    renderMessages(messages) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        messagesContainer.innerHTML = '';
+        let lastDate = null;
+
+        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(message => {
+            const messageDate = new Date(message.timestamp).toDateString();
+            const showDate = lastDate !== messageDate;
+            lastDate = messageDate;
+
+            const messageElement = this.messageManager.createMessageElement(message, showDate);
+            messagesContainer.appendChild(messageElement);
+        });
+
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    addMessageToInterface(message) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+
+        const lastMessage = messagesContainer.lastChild;
+        const lastDate = lastMessage?.dataset?.timestamp ? new Date(lastMessage.dataset.timestamp).toDateString() : null;
+        const messageDate = new Date(message.timestamp).toDateString();
+        const showDate = lastDate !== messageDate;
+
+        const messageElement = this.messageManager.createMessageElement(message, showDate);
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    updateMessageStatus(messageId, status) {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            const statusElement = messageElement.querySelector('.message-status');
+            if (statusElement) {
+                statusElement.innerHTML = this.messageManager.getMessageStatusIcon(status);
+            }
+        }
     }
 
     setupEventListeners() {
@@ -610,4 +664,233 @@ class ChatSystem {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            this.audioChunks = [];
+            this.isRecording = true;
+            this.recordingStartTime = Date.now();
+
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            const recordingTime = document.getElementById('recordingTime');
+            if (recordingIndicator) recordingIndicator.classList.remove('hidden');
+
+            this.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) this.audioChunks.push(e.data);
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+
+                const messageData = {
+                    id: Date.now().toString(),
+                    chatId: this.currentChatId,
+                    sender: 'me',
+                    type: 'voice',
+                    audioUrl: audioUrl,
+                    audioDuration: duration,
+                    timestamp: new Date().toISOString(),
+                    status: 'sending'
+                };
+
+                this.addMessageToInterface(messageData);
+
+                try {
+                    // Simulate saving audio to server (in practice, upload audioBlob to a storage service)
+                    await ApiManager.saveMessage({
+                        ...messageData,
+                        audioUrl: 'mock-audio-url.webm' // Placeholder for actual URL
+                    });
+                    this.updateMessageStatus(messageData.id, 'sent');
+                    setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+                    setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+                } catch (error) {
+                    console.error('Erreur envoi message vocal:', error);
+                    this.updateMessageStatus(messageData.id, 'failed');
+                    this.showToast('Erreur lors de l\'envoi du message vocal', 'error');
+                }
+
+                stream.getTracks().forEach(track => track.stop());
+                this.isRecording = false;
+                if (recordingIndicator) recordingIndicator.classList.add('hidden');
+                if (recordingTime) {
+                    recordingTime.textContent = '0:00';
+                    recordingTime.dataset.seconds = '0';
+                }
+            };
+
+            this.mediaRecorder.start();
+
+            // Update recording time display
+            this.recordingTimer = setInterval(() => {
+                if (recordingTime) {
+                    const seconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    recordingTime.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+                    recordingTime.dataset.seconds = seconds;
+                }
+            }, 1000);
+
+        } catch (error) {
+            console.error('Erreur démarrage enregistrement:', error);
+            this.showToast('Impossible de démarrer l\'enregistrement', 'error');
+            this.isRecording = false;
+        }
+    }
+
+    stopRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+
+        this.mediaRecorder.stop();
+        clearInterval(this.recordingTimer);
+        this.isRecording = false;
+    }
+
+    startPolling() {
+        this.stopPolling();
+        this.pollingInterval = setInterval(async () => {
+            try {
+                await this.loadMessages();
+            } catch (error) {
+                console.error('Erreur polling:', error);
+            }
+        }, 5000);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    showDefaultView() {
+        const chatArea = document.getElementById('chatArea');
+        if (chatArea) {
+            chatArea.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center bg-gray-800 text-gray-400">
+                    <i class="fas fa-comment-dots text-6xl mb-4"></i>
+                    <h2 class="text-xl font-semibold">Sélectionnez une discussion</h2>
+                    <p class="text-sm mt-2">Choisissez un contact pour commencer à discuter.</p>
+                </div>
+            `;
+        }
+    }
+
+    showChats() {
+        document.getElementById('sidebarChats').classList.remove('hidden');
+        document.getElementById('sidebarSettings').classList.add('hidden');
+        document.getElementById('newChatPreview').classList.add('hidden');
+        document.getElementById('tempPreview').classList.add('hidden');
+    }
+
+    showSettings() {
+        document.getElementById('sidebarChats').classList.add('hidden');
+        document.getElementById('sidebarSettings').classList.remove('hidden');
+        document.getElementById('newChatPreview').classList.add('hidden');
+        document.getElementById('tempPreview').classList.add('hidden');
+    }
+
+    showNewChatPreview() {
+        document.getElementById('sidebarChats').classList.add('hidden');
+        document.getElementById('newChatPreview').classList.remove('hidden');
+        document.getElementById('sidebarSettings').classList.add('hidden');
+        document.getElementById('tempPreview').classList.add('hidden');
+    }
+
+    hideNewChatPreview() {
+        document.getElementById('newChatPreview').classList.add('hidden');
+        document.getElementById('sidebarChats').classList.remove('hidden');
+    }
+
+    toggleContextMenu(event) {
+        const contextMenu = document.getElementById('contextMenu');
+        if (contextMenu.classList.contains('hidden')) {
+            contextMenu.classList.remove('hidden');
+            contextMenu.style.left = `${event.clientX}px`;
+            contextMenu.style.top = `${event.clientY}px`;
+        } else {
+            contextMenu.classList.add('hidden');
+        }
+    }
+
+    async filterContacts(query) {
+        try {
+            const contacts = await ApiManager.getContacts();
+            const filtered = contacts.filter(contact =>
+                (contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`).toLowerCase().includes(query.toLowerCase()) ||
+                (contact.phone || '').includes(query)
+            );
+            this.renderContactsList(filtered);
+        } catch (error) {
+            console.error('Erreur filtrage contacts:', error);
+            this.showToast('Erreur lors du filtrage des contacts', 'error');
+        }
+    }
+
+    showModal(message, iconClass = 'fas fa-info-circle text-blue-400') {
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalIcon = document.getElementById('modal-icon');
+        if (modal && modalMessage && modalIcon) {
+            modalMessage.textContent = message;
+            modalIcon.innerHTML = `<i class="${iconClass}"></i>`;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    showConfirmModal(title, message, onConfirm) {
+        const modal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        if (modal && confirmTitle && confirmMessage) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            this.confirmCallback = onConfirm;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('hidden');
+    }
+
+    handleConfirm() {
+        if (this.confirmCallback) {
+            this.confirmCallback();
+            this.confirmCallback = null;
+        }
+        this.hideModal('confirm-modal');
+    }
+
+    showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        const bgColor = type === 'error' ? 'bg-red-600' : 'bg-green-600';
+        toast.className = `bg-opacity-90 ${bgColor} text-white rounded-lg px-4 py-2 shadow-lg animate-pulse`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('animate-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    logout() {
+        this.showToast('Déconnexion réussie', 'info');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+}
+
+// Initialisation
+let chatSystem;
+document.addEventListener('DOMContentLoaded', () => {
+    chatSystem = new ChatSystem();
+});
