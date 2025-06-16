@@ -96,6 +96,13 @@ class ApiManager {
         return await this.request('/contacts');
     }
 
+    static async addContact(contactData) {
+        return await this.request('/contacts', {
+            method: 'POST',
+            body: JSON.stringify(contactData)
+        });
+    }
+
     static async getMessages(chatId = null) {
         const endpoint = chatId ? `/messages?chatId=${chatId}` : '/messages';
         return await this.request(endpoint);
@@ -394,6 +401,7 @@ class ChatSystem {
         try {
             const contacts = await ApiManager.getContacts();
             this.renderContactsList(contacts);
+            this.renderNewChatContactsList(contacts);
         } catch (error) {
             console.error('Erreur chargement contacts:', error);
             this.showToast('Erreur lors du chargement des contacts', 'error');
@@ -410,7 +418,7 @@ class ChatSystem {
                  onclick="chatSystem.selectContact('${contact.id}')">
                 <div class="relative">
                     <div class="bg-green-500 w-12 h-12 rounded-full flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">${(contact.firstName?.charAt(0) || 'A').toUpperCase()}</span>
+                        <span class="text-white font-bold text-lg">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
                     </div>
                     ${contact.status === 'online' ? '<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>' : ''}
                 </div>
@@ -420,6 +428,25 @@ class ChatSystem {
                         <span class="text-gray-500 text-xs">${this.messageManager.formatTime(new Date())}</span>
                     </div>
                     <div class="text-gray-400 text-sm truncate">${contact.phone}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderNewChatContactsList(contacts) {
+        const newChatContactsList = document.getElementById('newChatContactsList');
+        if (!newChatContactsList) return;
+
+        newChatContactsList.innerHTML = contacts.map(contact => `
+            <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer" 
+                 data-contact-id="${contact.id}" 
+                 onclick="chatSystem.selectContact('${contact.id}')">
+                <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                    <span class="text-white font-bold">${(contact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
+                </div>
+                <div>
+                    <p class="text-white">${contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`}</p>
+                    <p class="text-gray-400 text-sm">${contact.phone}</p>
                 </div>
             </div>
         `).join('');
@@ -437,6 +464,7 @@ class ChatSystem {
                 this.renderChatInterface();
                 await this.loadMessages();
                 this.startPolling();
+                this.hideNewChatPreview();
             }
         } catch (error) {
             console.error('Erreur sélection contact:', error);
@@ -451,7 +479,7 @@ class ChatSystem {
         chatHeader.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="bg-green-500 w-10 h-10 rounded-full flex items-center justify-center">
-                    <span class="text-white font-bold">${(this.currentContact.firstName?.charAt(0) || 'A').toUpperCase()}</span>
+                    <span class="text-white font-bold">${(this.currentContact.fullName?.charAt(0) || 'A').toUpperCase()}</span>
                 </div>
                 <div>
                     <h2 class="text-white font-semibold">${this.currentContact.fullName || `${this.currentContact.firstName || ''} ${this.currentContact.lastName || ''}`}</h2>
@@ -532,6 +560,9 @@ class ChatSystem {
         const confirmCancel = document.getElementById('confirm-cancel');
         const logoutBtn = document.getElementById('logoutBtn');
         const settingsLogout = document.getElementById('settingsLogout');
+        const newContactBtn = document.getElementById('newContactBtn');
+        const newContactSave = document.getElementById('new-contact-save');
+        const newContactCancel = document.getElementById('new-contact-cancel');
 
         if (sidebarChatIcon) {
             sidebarChatIcon.addEventListener('click', () => this.showChats());
@@ -575,6 +606,18 @@ class ChatSystem {
 
         if (settingsLogout) {
             settingsLogout.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
+        }
+
+        if (newContactBtn) {
+            newContactBtn.addEventListener('click', () => this.showNewContactModal());
+        }
+
+        if (newContactSave) {
+            newContactSave.addEventListener('click', () => this.saveNewContact());
+        }
+
+        if (newContactCancel) {
+            newContactCancel.addEventListener('click', () => this.hideModal('new-contact-modal'));
         }
 
         document.addEventListener('click', (e) => {
@@ -755,7 +798,7 @@ class ChatSystem {
             } catch (error) {
                 console.error('Erreur polling:', error);
             }
-        }, 5000);
+        }, 60000); // Poll every 60 seconds
     }
 
     stopPolling() {
@@ -802,6 +845,41 @@ class ChatSystem {
     hideNewChatPreview() {
         document.getElementById('newChatPreview').classList.add('hidden');
         document.getElementById('sidebarChats').classList.remove('hidden');
+    }
+
+    showNewContactModal() {
+        const modal = document.getElementById('new-contact-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.getElementById('newContactName').value = '';
+            document.getElementById('newContactPhone').value = '';
+        }
+    }
+
+    async saveNewContact() {
+        const nameInput = document.getElementById('newContactName');
+        const phoneInput = document.getElementById('newContactPhone');
+        if (!nameInput.value.trim() || !phoneInput.value.trim()) {
+            this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        const contactData = {
+            id: Date.now().toString(),
+            fullName: nameInput.value.trim(),
+            phone: phoneInput.value.trim(),
+            status: 'offline'
+        };
+
+        try {
+            await ApiManager.addContact(contactData);
+            this.hideModal('new-contact-modal');
+            await this.loadContacts();
+            this.showToast('Contact ajouté avec succès', 'info');
+        } catch (error) {
+            console.error('Erreur ajout contact:', error);
+            this.showToast('Erreur lors de l\'ajout du contact', 'error');
+        }
     }
 
     toggleContextMenu(event) {

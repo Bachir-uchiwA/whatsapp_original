@@ -157,26 +157,7 @@
                         </div>
                         <div class="p-4 border-t-2 border-gray-700">
                             <h3 class="text-white text-sm font-medium">Contacts sur WhatsApp</h3>
-                            <div class="mt-2">
-                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">B</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-white">Bachir IIR 👀 (vous)</p>
-                                        <p class="text-gray-400 text-sm">Envoyez-vous un message</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
-                                    <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center mr-3">
-                                        <span class="text-white font-bold">S</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-white">Salif Thiouné 😎 39</p>
-                                        <p class="text-gray-400 text-sm">+221 70 620 28 16</p>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="newChatContactsList" class="mt-2"></div>
                         </div>
                     </div>
                 </div>
@@ -235,7 +216,7 @@
                 </button>
             </div>
         </div>
-        <div id="contextMenu" class="hidden absolute bg-gray-800 text-white rounded-lg left-[650px] top-[55px] shadow-lg py-2 w-48 z-50 animate-scale-in">
+        <div id="contextMenu" class="hidden absolute bg-gray-800 text-white rounded-lg shadow-lg py-2 w-48 z-50 animate-scale-in">
             <ul>
                 <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Nouveau groupe</a></li>
                 <li><a href="#" class="block px-4 py-2 hover:bg-gray-700">Archiver le chat</a></li>
@@ -262,6 +243,17 @@
                 <div class="flex space-x-2 mt-4">
                     <button id="confirm-ok" class="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg py-2 transition-colors duration-200">Confirmer</button>
                     <button id="confirm-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 transition-colors duration-200">Annuler</button>
+                </div>
+            </div>
+        </div>
+        <div id="new-contact-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full animate-scale-in">
+                <h3 class="text-white font-semibold mb-4">Ajouter un contact</h3>
+                <input id="newContactName" type="text" placeholder="Nom complet" class="w-full bg-gray-700 text-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <input id="newContactPhone" type="text" placeholder="Numéro de téléphone" class="w-full bg-gray-700 text-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <div class="flex space-x-2 mt-4">
+                    <button id="new-contact-save" class="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg py-2 transition-colors duration-200">Enregistrer</button>
+                    <button id="new-contact-cancel" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 transition-colors duration-200">Annuler</button>
                 </div>
             </div>
         </div>
