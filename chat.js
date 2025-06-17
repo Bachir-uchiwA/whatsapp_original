@@ -1240,12 +1240,30 @@ class ChatSystem {
             return;
         }
 
+        // Vérification si le numéro existe déjà
+        const existingContact = this.contacts.find(contact => contact.phone === phoneInput.value.trim());
+        if (existingContact) {
+            this.showToast('Ce numéro est déjà existant', 'error');
+            return;
+        }
+
         // Déterminer le pays à partir des utilisateurs existants
         const country = this.users.find(user => user.phone === phoneInput.value.trim())?.country || 'FR';
 
+        // Gestion des doublons de noms
+        let baseName = nameInput.value.trim();
+        let finalName = baseName;
+        let count = 1;
+        const nameExists = this.contacts.some(contact => contact.fullName === finalName);
+        while (nameExists) {
+            finalName = `${baseName}${count}`;
+            count++;
+            if (!this.contacts.some(contact => contact.fullName === finalName)) break;
+        }
+
         const contactData = {
             id: Date.now().toString(),
-            fullName: nameInput.value.trim(),
+            fullName: finalName,
             phone: phoneInput.value.trim(),
             country: country,
             status: 'offline'
