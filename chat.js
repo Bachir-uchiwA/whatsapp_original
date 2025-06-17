@@ -120,29 +120,23 @@ style.textContent = `
     }
     .settings-item {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         padding: 12px;
         color: #fff;
         border-bottom: 1px solid #4a5568;
-        min-height: 48px;
     }
     .settings-item i {
         margin-right: 12px;
         color: #34d399;
         font-size: 16px;
-        width: 20px;
-        text-align: center;
-        margin-bottom: 4px;
     }
-    .settings-item .main-text {
+    .settings-item span {
+        flex: 1;
         font-size: 14px;
-        color: #fff;
-        margin-bottom: 2px;
     }
     .settings-item .subtext {
         color: #a0aec0;
         font-size: 12px;
-        align-self: flex-start;
     }
     .logout-btn {
         background: #f87171;
@@ -571,35 +565,35 @@ class ChatSystem {
                         <div class="status-text">En ligne <span class="text-gray-400">• Salut ! Justifie WhatsApp.</span></div>
                     </div>
                 </div>
-                <div class="space-y-1 flex-1">
+                <div class="space-y-2 flex-1">
                     <div class="settings-item">
                         <i class="fas fa-user-shield"></i>
-                        <span class="main-text">Compte</span>
+                        <span>Compte</span>
                         <span class="subtext">Sécurité, informations de compte</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-lock"></i>
-                        <span class="main-text">Confidentialité</span>
+                        <span>Confidentialité</span>
                         <span class="subtext">Contacts bloqués, messages éphémères</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-comments"></i>
-                        <span class="main-text">Discussions</span>
+                        <span>Discussions</span>
                         <span class="subtext">Thème, fond d'écran, paramètres des discussions</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-bell"></i>
-                        <span class="main-text">Notifications</span>
+                        <span>Notifications</span>
                         <span class="subtext">Notifications de messages</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-keyboard"></i>
-                        <span class="main-text">Raccourcis clavier</span>
+                        <span>Raccourcis clavier</span>
                         <span class="subtext">Actions rapides</span>
                     </div>
                     <div class="settings-item">
                         <i class="fas fa-question-circle"></i>
-                        <span class="main-text">Aide</span>
+                        <span>Aide</span>
                         <span class="subtext">Pages d'aide, contactez-nous, politique de confidentialité</span>
                     </div>
                 </div>
@@ -897,11 +891,7 @@ class ChatSystem {
         }
 
         if (sendBtn) sendBtn.addEventListener('click', () => this.sendMessage());
-        if (emojiBtn) {
-            emojiBtn.addEventListener('click', () => {
-                window.location.href = 'chat.html';
-            });
-        }
+        if (emojiBtn) emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
         if (recordBtn) {
             recordBtn.addEventListener('mousedown', () => this.startRecording());
             recordBtn.addEventListener('mouseup', () => this.stopRecording());
