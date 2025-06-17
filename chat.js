@@ -1308,4 +1308,4 @@ class ChatSystem {
 }
 
 // Initialisation
-const chatSystem = new ChatSystem();
+const chatSystem = new ChatSystem(); 
