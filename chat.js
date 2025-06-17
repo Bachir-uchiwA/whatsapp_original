@@ -1,162 +1,5 @@
 const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
 
-// Adding CSS styles for messages and emoji picker
-const style = document.createElement('style');
-style.textContent = `
-    .message-group { max-width: 100%; }
-    .message-bubble {
-        max-width: 70%;
-        border-radius: 12px;
-        position: relative;
-        color: #fff;
-    }
-    .message-bubble.own {
-        background: #056162;
-        margin-left: auto;
-    }
-    .message-bubble.other {
-        background: #262d31;
-    }
-    .message-time {
-        font-size: 0.75rem;
-        color: #a0aec0;
-        text-align: right;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 4px;
-    }
-    .message-status {
-        display: inline-flex;
-        align-items: center;
-    }
-    .date-separator {
-        text-align: center;
-        margin: 16px 0;
-    }
-    .date-separator span {
-        background: #2d3748;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        color: #a0aec0;
-    }
-    .voice-message, .audio-message {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .voice-waveform {
-        display: flex;
-        gap: 2px;
-        align-items: center;
-        flex-grow: 1;
-    }
-    .wave-bar {
-        width: 3px;
-        background: #a0aec0;
-        border-radius: 2px;
-    }
-    .emoji-btn {
-        font-size: 1.5rem;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-    }
-    .emoji-btn:hover {
-        background: #4a5568;
-        border-radius: 4px;
-    }
-    .audio-player {
-        width: 200px;
-    }
-    .settings-search {
-        background: #2d3748;
-        border: none;
-        color: #a0aec0;
-        padding: 8px;
-        border-radius: 8px;
-        width: 100%;
-        margin-bottom: 16px;
-        font-size: 14px;
-    }
-    .settings-profile {
-        display: flex;
-        align-items: center;
-        padding: 12px;
-        border-bottom: 1px solid #4a5568;
-    }
-    .settings-profile .avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: #34d399;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px;
-        position: relative;
-    }
-    .settings-profile .avatar .status {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 10px;
-        height: 10px;
-        background: #34d399;
-        border: 2px solid #1a202c;
-        border-radius: 50%;
-    }
-    .settings-profile .info .name {
-        color: #fff;
-        font-size: 16px;
-        font-weight: 500;
-    }
-    .settings-profile .info .status-text {
-        color: #a0aec0;
-        font-size: 12px;
-    }
-    .settings-item {
-        display: flex;
-        flex-direction: column;
-        padding: 12px;
-        color: #fff;
-        border-bottom: 1px solid #4a5568;
-        min-height: 48px;
-    }
-    .settings-item i {
-        margin-right: 12px;
-        color: #34d399;
-        font-size: 16px;
-        width: 20px;
-        text-align: center;
-        margin-bottom: 4px;
-    }
-    .settings-item .main-text {
-        font-size: 14px;
-        color: #fff;
-        margin-bottom: 2px;
-    }
-    .settings-item .subtext {
-        color: #a0aec0;
-        font-size: 12px;
-        align-self: flex-start;
-    }
-    .logout-btn {
-        background: #f87171;
-        color: #fff;
-        padding: 12px;
-        border-radius: 8px;
-        text-align: center;
-        margin: 16px 12px 0;
-        font-size: 14px;
-        font-weight: 500;
-    }
-`;
-document.head.appendChild(style);
-
 // Système de gestion des API
 class ApiManager {
     static async request(endpoint, options = {}) {
@@ -560,50 +403,62 @@ class ChatSystem {
                 <h2 class="text-white font-semibold text-lg">Paramètres</h2>
             </div>
             <div class="p-4 bg-gray-900 flex flex-col h-full">
-                <input type="text" placeholder="Rechercher dans les paramètres" class="settings-search mb-6">
-                <div class="settings-profile mb-6">
-                    <div class="avatar">
+                <input type="text" placeholder="Rechercher dans les paramètres" class="w-full py-2 px-3 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 mb-6">
+                <div class="flex items-center mb-6">
+                    <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mr-3">
                         <img src="https://via.placeholder.com/50" alt="Profile" class="w-full h-full rounded-full">
-                        <div class="status"></div>
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900"></div>
                     </div>
-                    <div class="info">
-                        <div class="name">Bachir dev <span class="text-green-500 text-sm">🇱🇾🇽🇧❤️</span></div>
-                        <div class="status-text">En ligne <span class="text-gray-400">• Salut ! Justifie WhatsApp.</span></div>
+                    <div>
+                        <div class="text-white font-semibold">Bachir dev <span class="text-green-500 text-sm">🇱🇾🇽🇧❤️</span></div>
+                        <div class="text-gray-400 text-sm">En ligne <span class="text-gray-500">• Salut ! Justifie WhatsApp.</span></div>
                     </div>
                 </div>
                 <div class="space-y-1 flex-1">
-                    <div class="settings-item">
-                        <i class="fas fa-user-shield"></i>
-                        <span class="main-text">Compte</span>
-                        <span class="subtext">Sécurité, informations de compte</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-user-shield text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Compte</span>
+                            <span class="text-gray-400 text-sm block">Sécurité, informations de compte</span>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <i class="fas fa-lock"></i>
-                        <span class="main-text">Confidentialité</span>
-                        <span class="subtext">Contacts bloqués, messages éphémères</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-lock text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Confidentialité</span>
+                            <span class="text-gray-400 text-sm block">Contacts bloqués, messages éphémères</span>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <i class="fas fa-comments"></i>
-                        <span class="main-text">Discussions</span>
-                        <span class="subtext">Thème, fond d'écran, paramètres des discussions</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-comments text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Discussions</span>
+                            <span class="text-gray-400 text-sm block">Thème, fond d'écran, paramètres des discussions</span>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <i class="fas fa-bell"></i>
-                        <span class="main-text">Notifications</span>
-                        <span class="subtext">Notifications de messages</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-bell text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Notifications</span>
+                            <span class="text-gray-400 text-sm block">Notifications de messages</span>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <i class="fas fa-keyboard"></i>
-                        <span class="main-text">Raccourcis clavier</span>
-                        <span class="subtext">Actions rapides</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-keyboard text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Raccourcis clavier</span>
+                            <span class="text-gray-400 text-sm block">Actions rapides</span>
+                        </div>
                     </div>
-                    <div class="settings-item">
-                        <i class="fas fa-question-circle"></i>
-                        <span class="main-text">Aide</span>
-                        <span class="subtext">Pages d'aide, contactez-nous, politique de confidentialité</span>
+                    <div class="flex items-center p-3 border-b border-gray-700">
+                        <i class="fas fa-question-circle text-green-500 mr-3"></i>
+                        <div>
+                            <span class="text-white">Aide</span>
+                            <span class="text-gray-400 text-sm block">Pages d'aide, contactez-nous, politique de confidentialité</span>
+                        </div>
                     </div>
                 </div>
-                <button id="settingsLogout" class="logout-btn">Se déconnecter</button>
+                <button id="settingsLogout" class="bg-red-500 text-white px-4 py-2 rounded-lg mt-4 w-full">Se déconnecter</button>
             </div>
         `;
 
@@ -623,7 +478,7 @@ class ChatSystem {
                 <h2 class="text-white font-semibold text-lg">Nouvelle discussion</h2>
             </div>
             <div class="p-2 bg-gray-900">
-                <button id="newContactBtn" class="w-full text-left p-3 text-white hover:bg-gray-700 rounded-lg flex items-center space-x-3">
+                <button id="newContactBtn" class="w-full flex items-center space-x-3 p-3 text-white hover:bg-gray-700 rounded-lg">
                     <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                         <i class="fas fa-user-plus text-white"></i>
                     </div>
@@ -1006,30 +861,14 @@ class ChatSystem {
                     this.updateMessageStatus(messageData.id, 'failed');
                     this.showToast('Erreur lors de l\'envoi du message vocal', 'error');
                 }
-
-                stream.getTracks().forEach(track => track.stop());
-                this.isRecording = false;
-                if (recordingIndicator) recordingIndicator.classList.add('hidden');
-                if (recordingTime) {
-                    recordingTime.textContent = '0:00';
-                    recordingTime.dataset.seconds = '0';
-                }
             };
 
-            this.mediaRecorder.start();
-
-            this.recordingTimer = setInterval(() => {
-                if (recordingTime) {
-                    const seconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
-                    const minutes = Math.floor(seconds / 60);
-                    const secs = seconds % 60;
-                    recordingTime.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
-                    recordingTime.dataset.seconds = seconds;
-                }
-            }, 1000);
+            this.mediaRecorder.start(250);
+            this.updateRecordingTime();
         } catch (error) {
-            console.error('Erreur démarrage enregistrement:', error);
-            this.showToast('Erreur lors de l\'accès au microphone', 'error');
+            console.error('Erreur enregistrement:', error);
+            this.showToast('Erreur lors du démarrage de l\'enregistrement', 'error');
+            this.isRecording = false;
         }
     }
 
@@ -1037,24 +876,31 @@ class ChatSystem {
         if (!this.isRecording || !this.mediaRecorder) return;
 
         this.mediaRecorder.stop();
-        clearInterval(this.recordingTimer);
+        const stream = this.mediaRecorder.stream;
+        stream.getTracks().forEach(track => track.stop());
+        this.mediaRecorder = null;
         this.isRecording = false;
+
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        if (recordingIndicator) recordingIndicator.classList.add('hidden');
+
+        clearInterval(this.recordingTimer);
     }
 
     cancelRecording() {
         if (!this.isRecording || !this.mediaRecorder) return;
 
         this.mediaRecorder.stop();
-        clearInterval(this.recordingTimer);
-        this.isRecording = false;
+        const stream = this.mediaRecorder.stream;
+        stream.getTracks().forEach(track => track.stop());
+        this.mediaRecorder = null;
         this.audioChunks = [];
+        this.isRecording = false;
+
         const recordingIndicator = document.getElementById('recordingIndicator');
-        const recordingTime = document.getElementById('recordingTime');
         if (recordingIndicator) recordingIndicator.classList.add('hidden');
-        if (recordingTime) {
-            recordingTime.textContent = '0:00';
-            recordingTime.dataset.seconds = '0';
-        }
+
+        clearInterval(this.recordingTimer);
         this.showToast('Enregistrement annulé', 'info');
     }
 
@@ -1063,11 +909,7 @@ class ChatSystem {
 
         try {
             const audioData = await this.blobToBase64(file);
-            const audio = new Audio(URL.createObjectURL(file));
-            await new Promise((resolve) => {
-                audio.onloadedmetadata = () => resolve();
-            });
-            const duration = Math.floor(audio.duration);
+            const duration = await this.getAudioDuration(file);
 
             const messageData = {
                 id: Date.now().toString(),
@@ -1082,23 +924,171 @@ class ChatSystem {
 
             this.addMessageToInterface(messageData);
 
-            await ApiManager.saveMessage(messageData);
-            this.updateMessageStatus(messageData.id, 'sent');
-            setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
-            setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+            try {
+                await ApiManager.saveMessage(messageData);
+                this.updateMessageStatus(messageData.id, 'sent');
+                setTimeout(() => this.updateMessageStatus(messageData.id, 'delivered'), 1000);
+                setTimeout(() => this.updateMessageStatus(messageData.id, 'read'), 2000);
+            } catch (error) {
+                console.error('Erreur envoi fichier audio:', error);
+                this.updateMessageStatus(messageData.id, 'failed');
+                this.showToast('Erreur lors de l\'envoi du fichier audio', 'error');
+            }
         } catch (error) {
-            console.error('Erreur upload audio:', error);
-            this.showToast('Erreur lors de l\'envoi du fichier audio', 'error');
+            console.error('Erreur traitement audio:', error);
+            this.showToast('Erreur lors du traitement du fichier audio', 'error');
         }
     }
 
+    async getAudioDuration(file) {
+        return new Promise((resolve) => {
+            const audio = new Audio(URL.createObjectURL(file));
+            audio.onloadedmetadata = () => resolve(Math.floor(audio.duration));
+            audio.onerror = () => resolve(0);
+        });
+    }
+
     blobToBase64(blob) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
             reader.readAsDataURL(blob);
         });
+    }
+
+    updateRecordingTime() {
+        const recordingTime = document.getElementById('recordingTime');
+        if (!recordingTime) return;
+
+        this.recordingTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+            recordingTime.dataset.seconds = elapsed;
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            recordingTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    filterContacts(searchTerm) {
+        const filteredContacts = this.contacts.filter(contact => {
+            const fullName = (contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`).toLowerCase();
+            const phone = contact.phone.toLowerCase();
+            return fullName.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm.toLowerCase());
+        });
+        if (this.currentView === 'chats') {
+            this.renderContactsList(filteredContacts);
+        } else if (this.currentView === 'newChat') {
+            this.renderNewChatContactsList(filteredContacts);
+        }
+    }
+
+    toggleContextMenu(e) {
+        const contextMenu = document.getElementById('contextMenu');
+        if (contextMenu) {
+            contextMenu.style.display = contextMenu.style.display === 'block' ? 'none' : 'block';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+        }
+    }
+
+    showModal(message, iconClass = 'fas fa-info-circle') {
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalIcon = document.getElementById('modal-icon');
+        if (modal && modalMessage && modalIcon) {
+            modalMessage.textContent = message;
+            modalIcon.innerHTML = `<i class="${iconClass} text-green-500 text-xl"></i>`;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('hidden');
+    }
+
+    showConfirmModal(title, message, callback) {
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        if (confirmModal && confirmTitle && confirmMessage) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            this.confirmCallback = callback;
+            confirmModal.classList.remove('hidden');
+        }
+    }
+
+    handleConfirm() {
+        if (this.confirmCallback) this.confirmCallback();
+        this.hideModal('confirm-modal');
+        this.confirmCallback = null;
+    }
+
+    showToast(message, type = 'success') {
+        const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `bg-${type === 'error' ? 'red' : 'green'}-500 text-white p-3 rounded-lg shadow-lg animate-fade-in`;
+        toast.textContent = message;
+        toast.style.animation = 'fade-out 3s forwards';
+
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('animate-fade-out');
+            setTimeout(() => toast.remove(), 1000);
+        }, 3000);
+    }
+
+    showNewContactModal() {
+        const modal = document.getElementById('new-contact-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    async saveNewContact() {
+        const nameInput = document.getElementById('newContactName');
+        const phoneInput = document.getElementById('newContactPhone');
+        if (!nameInput || !phoneInput || !nameInput.value.trim() || !phoneInput.value.trim()) {
+            this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        const newContact = {
+            id: Date.now().toString(),
+            fullName: nameInput.value.trim(),
+            phone: phoneInput.value.trim(),
+            status: 'offline'
+        };
+
+        try {
+            await ApiManager.addContact(newContact);
+            this.contacts.push(newContact);
+            if (this.currentView === 'chats') {
+                this.renderContactsList(this.contacts);
+            } else if (this.currentView === 'newChat') {
+                this.renderNewChatContactsList(this.contacts);
+            }
+            this.hideModal('new-contact-modal');
+            this.showToast('Contact ajouté avec succès', 'success');
+            nameInput.value = '';
+            phoneInput.value = '';
+        } catch (error) {
+            console.error('Erreur ajout contact:', error);
+            this.showToast('Erreur lors de l\'ajout du contact', 'error');
+        }
+    }
+
+    async logout() {
+        try {
+            await ApiManager.deleteSession();
+            this.showToast('Déconnexion réussie', 'success');
+            window.location.href = '/login';
+        } catch (error) {
+            console.error('Erreur déconnexion:', error);
+            this.showToast('Erreur lors de la déconnexion', 'error');
+        }
     }
 
     startPolling() {
@@ -1106,9 +1096,14 @@ class ChatSystem {
         this.pollingInterval = setInterval(async () => {
             try {
                 const messages = await ApiManager.getMessages(this.currentChatId);
-                this.renderMessages(messages);
+                const newMessages = messages.filter(m => !this.messageManager.messages.has(m.id));
+                newMessages.forEach(message => {
+                    this.messageManager.messages.set(message.id, message);
+                    this.addMessageToInterface(message);
+                });
             } catch (error) {
                 console.error('Erreur polling:', error);
+                this.showToast('Erreur lors de la mise à jour des messages', 'error');
             }
         }, 5000);
     }
@@ -1121,155 +1116,8 @@ class ChatSystem {
     }
 
     showDefaultView() {
-        const chatHeader = document.getElementById('chatHeader');
-        const messagesContainer = document.getElementById('messagesContainer');
-        if (chatHeader) chatHeader.innerHTML = '';
-        if (messagesContainer) messagesContainer.innerHTML = `
-            <div class="flex-1 flex items-center justify-center text-gray-400">
-                <p>Sélectionnez une discussion pour commencer</p>
-            </div>
-        `;
-    }
-
-    toggleContextMenu(event) {
-        const contextMenu = document.getElementById('contextMenu');
-        if (!contextMenu) return;
-
-        contextMenu.classList.toggle('hidden');
-        contextMenu.style.top = `${event.clientY}px`;
-        contextMenu.style.left = `${event.clientX}px`;
-
-        const rect = contextMenu.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-            contextMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
-        }
-        if (rect.bottom > window.innerHeight) {
-            contextMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
-        }
-    }
-
-    showModal(message, type = 'info') {
-        const modal = document.getElementById('modal');
-        const modalMessage = document.getElementById('modal-message');
-        const modalIcon = document.getElementById('modal-icon');
-
-        if (modal && modalMessage && modalIcon) {
-            modalMessage.textContent = message;
-            modalIcon.innerHTML = type === 'error' ? '<i class="fas fa-exclamation-circle text-red-500"></i>' : '<i class="fas fa-info-circle text-green-500"></i>';
-            modal.classList.remove('hidden');
-        }
-    }
-
-    hideModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('hidden');
-        this.confirmCallback = null;
-    }
-
-    showConfirmModal(title, message, callback) {
-        const modal = document.getElementById('confirm-modal');
-        const confirmTitle = document.getElementById('confirm-title');
-        const confirmMessage = document.getElementById('confirm-message');
-
-        if (modal && confirmTitle && confirmMessage) {
-            confirmTitle.textContent = title;
-            confirmMessage.textContent = message;
-            modal.classList.remove('hidden');
-            this.confirmCallback = callback;
-        }
-    }
-
-    handleConfirm() {
-        if (this.confirmCallback) {
-            this.confirmCallback();
-        }
-        this.hideModal('confirm-modal');
-    }
-
-    showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toastContainer');
-        if (!toastContainer) return;
-
-        const toast = document.createElement('div');
-        toast.className = `flex items-center p-3 rounded-lg shadow-lg animate-slide-up max-w-xs ${
-            type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-gray-700'
-        } text-white`;
-
-        toast.innerHTML = `
-            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} mr-2"></i>
-            <span>${message}</span>
-        `;
-
-        toastContainer.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('animate-slide-down');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    async logout() {
-        try {
-            await ApiManager.deleteSession();
-            window.location.reload();
-        } catch (error) {
-            console.error('Erreur déconnexion:', error);
-            this.showToast('Erreur lors de la déconnexion', 'error');
-        }
-    }
-
-    showNewContactModal() {
-        const modal = document.getElementById('new-contact-modal');
-        if (modal) modal.classList.remove('hidden');
-    }
-
-    async saveNewContact() {
-        const nameInput = document.getElementById('newContactName');
-        const phoneInput = document.getElementById('newContactPhone');
-
-        if (!nameInput || !phoneInput || !nameInput.value.trim() || !phoneInput.value.trim()) {
-            this.showToast('Veuillez remplir tous les champs', 'error');
-            return;
-        }
-
-        const contactData = {
-            id: Date.now().toString(),
-            fullName: nameInput.value.trim(),
-            phone: phoneInput.value.trim(),
-            status: 'offline'
-        };
-
-        try {
-            await ApiManager.addContact(contactData);
-            this.contacts.push(contactData);
-            if (this.currentView === 'chats') {
-                this.renderContactsList(this.contacts);
-            } else if (this.currentView === 'newChat') {
-                this.renderNewChatContactsList(this.contacts);
-            }
-            this.hideModal('new-contact-modal');
-            nameInput.value = '';
-            phoneInput.value = '';
-            this.showToast('Contact ajouté avec succès', 'success');
-        } catch (error) {
-            console.error('Erreur ajout contact:', error);
-            this.showToast('Erreur lors de l\'ajout du contact', 'error');
-        }
-    }
-
-    filterContacts(query) {
-        const filtered = this.contacts.filter(contact =>
-            (contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`).toLowerCase().includes(query.toLowerCase()) ||
-            contact.phone.includes(query)
-        );
-
-        if (this.currentView === 'chats') {
-            this.renderContactsList(filtered);
-        } else if (this.currentView === 'newChat') {
-            this.renderNewChatContactsList(filtered);
-        }
+        this.renderChatsView();
     }
 }
 
-// Initialisation
 const chatSystem = new ChatSystem();
