@@ -1,4 +1,5 @@
 const API_BASE_URL = 'https://projet-json-server-7.onrender.com';
+const LOGIN_URL = '/login'; // Ajustez cette URL selon votre page de connexion réelle
 
 // Adding CSS styles for messages and emoji picker
 const style = document.createElement('style');
@@ -1211,11 +1212,11 @@ class ChatSystem {
             this.stopPolling();
             this.showToast('Déconnexion réussie', 'success');
             // Rediriger vers la page de connexion
-            window.location.href = '/login';
+            window.location.href = LOGIN_URL;
         } catch (error) {
             console.error('Erreur déconnexion:', error);
             this.showToast('Déconnexion effectuée localement, certains paramètres peuvent persister', 'info');
-            window.location.href = '/login'; // Rediriger même en cas d'erreur
+            window.location.href = LOGIN_URL; // Rediriger même en cas d'erreur
         }
     }
 
