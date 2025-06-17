@@ -897,7 +897,11 @@ class ChatSystem {
         }
 
         if (sendBtn) sendBtn.addEventListener('click', () => this.sendMessage());
-        if (emojiBtn) emojiBtn.addEventListener('click', () => this.emojiManager.toggle());
+        if (emojiBtn) {
+            emojiBtn.addEventListener('click', () => {
+                window.location.href = 'chat.html';
+            });
+        }
         if (recordBtn) {
             recordBtn.addEventListener('mousedown', () => this.startRecording());
             recordBtn.addEventListener('mouseup', () => this.stopRecording());
