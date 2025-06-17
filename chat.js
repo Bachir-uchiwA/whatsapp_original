@@ -703,11 +703,11 @@ class ChatSystem {
         }
 
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
+            logoutBtn.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter de cette session ?', () => this.logout()));
         }
 
         if (settingsLogout) {
-            settingsLogout.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', () => this.logout()));
+            settingsLogout.addEventListener('click', () => this.showConfirmModal('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter de cette session ?', () => this.logout()));
         }
 
         if (newContactBtn) {
@@ -1214,7 +1214,13 @@ class ChatSystem {
 
     showNewContactModal() {
         const modal = document.getElementById('new-contact-modal');
-        if (modal) modal.classList.remove('hidden');
+        if (modal) {
+            modal.classList.remove('hidden');
+            const nameInput = document.getElementById('newContactName');
+            const phoneInput = document.getElementById('newContactPhone');
+            if (nameInput) nameInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+        }
     }
 
     async saveNewContact() {
@@ -1223,6 +1229,13 @@ class ChatSystem {
 
         if (!nameInput || !phoneInput || !nameInput.value.trim() || !phoneInput.value.trim()) {
             this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        // Basic phone number validation (example: starts with + or 0, followed by digits)
+        const phoneRegex = /^[+0][0-9]{9,}$/;
+        if (!phoneRegex.test(phoneInput.value.trim())) {
+            this.showToast('Numéro de téléphone invalide (ex: +1234567890 ou 0123456789)', 'error');
             return;
         }
 
@@ -1242,8 +1255,6 @@ class ChatSystem {
                 this.renderNewChatContactsList(this.contacts);
             }
             this.hideModal('new-contact-modal');
-            nameInput.value = '';
-            phoneInput.value = '';
             this.showToast('Contact ajouté avec succès', 'success');
         } catch (error) {
             console.error('Erreur ajout contact:', error);
