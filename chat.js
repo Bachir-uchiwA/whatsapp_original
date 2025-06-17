@@ -1209,12 +1209,13 @@ class ChatSystem {
             this.currentChatId = null;
             this.currentContact = null;
             this.stopPolling();
-            this.renderChatsView();
             this.showToast('Déconnexion réussie', 'success');
-            window.location.reload(); // Recharger la page pour une déconnexion complète
+            // Rediriger vers la page de connexion
+            window.location.href = '/login';
         } catch (error) {
             console.error('Erreur déconnexion:', error);
             this.showToast('Déconnexion effectuée localement, certains paramètres peuvent persister', 'info');
+            window.location.href = '/login'; // Rediriger même en cas d'erreur
         }
     }
 
