@@ -489,6 +489,8 @@ class ChatSystem {
         try {
             const contacts = await ApiManager.getContacts();
             this.contacts = contacts;
+            const users = await ApiManager.request('/users'); // Charger les utilisateurs pour déterminer le pays
+            this.users = users;
         } catch (error) {
             console.error('Erreur chargement contacts:', error);
             this.showToast('Erreur lors du chargement des contacts', 'error');
@@ -735,7 +737,6 @@ class ChatSystem {
                 this.renderChatInterface();
                 await this.loadMessages();
                 this.startPolling();
-                this.renderChatsView();
             }
         } catch (error) {
             console.error('Erreur sélection contact:', error);
@@ -825,8 +826,8 @@ class ChatSystem {
         const modalClose = document.getElementById('modal-close');
         const confirmOk = document.getElementById('confirm-ok');
         const confirmCancel = document.getElementById('confirm-cancel');
-        const newContactSave = document.getElementById('newContactSave');
-        const newContactCancel = document.getElementById('newContactCancel');
+        const newContactSave = document.getElementById('new-contact-save');
+        const newContactCancel = document.getElementById('new-contact-cancel');
 
         if (sidebarChatIcon) {
             sidebarChatIcon.addEventListener('click', () => this.renderChatsView());
@@ -1232,17 +1233,21 @@ class ChatSystem {
             return;
         }
 
-        // Basic phone number validation (example: starts with + or 0, followed by digits)
+        // Validation du numéro de téléphone
         const phoneRegex = /^[+0][0-9]{9,}$/;
         if (!phoneRegex.test(phoneInput.value.trim())) {
             this.showToast('Numéro de téléphone invalide (ex: +1234567890 ou 0123456789)', 'error');
             return;
         }
 
+        // Déterminer le pays à partir des utilisateurs existants
+        const country = this.users.find(user => user.phone === phoneInput.value.trim())?.country || 'FR';
+
         const contactData = {
             id: Date.now().toString(),
             fullName: nameInput.value.trim(),
             phone: phoneInput.value.trim(),
+            country: country,
             status: 'offline'
         };
 
@@ -1253,6 +1258,7 @@ class ChatSystem {
                 this.renderContactsList(this.contacts);
             } else if (this.currentView === 'newChat') {
                 this.renderNewChatContactsList(this.contacts);
+                this.selectContact(contactData.id); // Sélectionner immédiatement le nouveau contact
             }
             this.hideModal('new-contact-modal');
             this.showToast('Contact ajouté avec succès', 'success');
