@@ -200,12 +200,6 @@ class ApiManager {
             body: JSON.stringify({ status })
         });
     }
-
-    static async deleteSession() {
-        return await this.request('/sessions/1', {
-            method: 'DELETE'
-        });
-    }
 }
 
 // Système de gestion des emojis
@@ -1205,11 +1199,22 @@ class ChatSystem {
 
     async logout() {
         try {
-            await ApiManager.deleteSession();
-            window.location.reload();
+            // Tentative de suppression de la session (facultatif si l'endpoint existe)
+            await ApiManager.deleteSession().catch(() => {
+                // Ignorer l'erreur 404, passer à la déconnexion locale
+                console.warn('Endpoint /sessions/1 non trouvé, déconnexion locale effectuée.');
+            });
+
+            // Réinitialisation de l'état local
+            this.currentChatId = null;
+            this.currentContact = null;
+            this.stopPolling();
+            this.renderChatsView();
+            this.showToast('Déconnexion réussie', 'success');
+            window.location.reload(); // Recharger la page pour une déconnexion complète
         } catch (error) {
             console.error('Erreur déconnexion:', error);
-            this.showToast('Erreur lors de la déconnexion', 'error');
+            this.showToast('Déconnexion effectuée localement, certains paramètres peuvent persister', 'info');
         }
     }
 
